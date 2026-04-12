@@ -1,31 +1,53 @@
-const CACHE = 'mpl-v3';
+// v4 — busts all previous caches on install
+const CACHE = 'mpl-v7';
 const ASSETS = [
-  '/',
+  '/?v=7',
   '/index.html',
-  '/css/app.css',
-  '/css/themes.css',
-  '/js/data.js',
-  '/js/screens.js',
-  '/js/rehab.js',
-  '/js/app.js',
+  '/css/app.css?v=7',
+  '/css/themes.css?v=7',
+  '/js/data.js?v=7',
+  '/js/screens.js?v=7',
+  '/js/rehab.js?v=7',
+  '/js/app.js?v=7',
   '/manifest.json',
   '/icons/logo.png',
+  '/icons/icon-192.png',
+  '/icons/icon-512.png',
 ];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
-  self.skipWaiting();
+  e.waitUntil(
+    caches.open(CACHE)
+      .then(c => c.addAll(ASSETS))
+      .then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys().then(keys =>
-    Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
-  ));
-  self.clients.claim();
+  e.waitUntil(
+    caches.keys()
+      .then(keys => Promise.all(
+        keys.filter(k => k !== CACHE).map(k => caches.delete(k))
+      ))
+      .then(() => self.clients.claim())
+  );
 });
 
 self.addEventListener('fetch', e => {
   e.respondWith(
-    caches.match(e.request).then(cached => cached || fetch(e.request).catch(() => caches.match('/index.html')))
+    caches.match(e.request)
+      .then(cached => {
+        if (cached) return cached;
+        return fetch(e.request)
+          .then(res => {
+            // Cache fresh copies of our assets
+            if (res.ok && e.request.url.includes(self.location.origin)) {
+              const clone = res.clone();
+              caches.open(CACHE).then(c => c.put(e.request, clone));
+            }
+            return res;
+          })
+          .catch(() => caches.match('/index.html'));
+      })
   );
 });

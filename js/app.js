@@ -6,6 +6,13 @@ const Auth = {
   selectProfile(profileId) {
     this._pending = profileId;
     const profile = PROFILES[profileId];
+
+    // Guest has no password — log in directly
+    if (profile.password === null) {
+      this._login(profileId);
+      return;
+    }
+
     const modal = document.getElementById('auth-modal');
     modal.querySelector('.auth-box').className = 'auth-box ' + profileId + '-auth';
     document.getElementById('auth-avatar').className = 'auth-avatar ' + profileId;

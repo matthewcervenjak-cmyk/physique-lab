@@ -3,6 +3,7 @@
 const PROFILES = {
   matt:  { password: 'Brissy1996!',    theme: 'matt',  label: 'Matt',  hasRehab: false },
   lynny: { password: 'mcdonalds2017!', theme: 'lynny', label: 'Lynny', hasRehab: true  },
+  guest: { password: null,             theme: 'matt',  label: 'Guest', hasRehab: false },
 };
 
 let CURRENT_PROFILE = null; // set at login
