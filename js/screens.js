@@ -5,16 +5,15 @@ const Screens = {
   // ══════════════════════════════════
   // TODAY SCREEN
   // ══════════════════════════════════
-  renderToday() {
+  async renderToday() {
     const container = document.getElementById('screen-today');
-    const active = DB.getActive();
-    const programme = DB.getProgramme();
-    const week = DB.getCurrentWeek();
+    container.innerHTML = `<div class="loading-state"><div class="loading-spinner"></div></div>`;
 
-    // header-right is managed centrally by App._renderScreen()
+    const active = DB.getActive();
+    const week = DB.getCurrentWeek();
+    const programme = await DB.getProgramme();
 
     if (!active) {
-      // No active workout — show day picker
       container.innerHTML = `
         <div class="section-header">
           <div><div class="section-title">Choose today's session</div><div class="section-sub">Week ${week} of 8</div></div>
@@ -39,9 +38,8 @@ const Screens = {
       return;
     }
 
-    // Active workout in progress
     const day = programme.find(d => d.id === active.dayId);
-    if (!day) { DB.clearActive(); this.renderToday(); return; }
+    if (!day) { await DB.clearActive(); this.renderToday(); return; }
 
     let html = `
       <div class="section-header">
@@ -58,19 +56,16 @@ const Screens = {
       const lastLoad = lastSets.length > 0 ? lastSets[0].load : null;
       const lastReps = lastSets.length > 0 ? lastSets[0].reps : null;
       const lastE1RM = lastSets.length > 0 ? Math.max(...lastSets.map(s => DB.calcE1RM(parseFloat(s.load), parseInt(s.reps)))) : null;
-
       const status = DB.getProgressionStatus(active.dayId, ex.id, ex.sets);
       const badges = { pr: '<span class="badge badge-pr">↑ PR</span>', same: '<span class="badge badge-same">→ Same</span>', down: '<span class="badge badge-down">↓ Drop</span>', new: '<span class="badge badge-new">New</span>' };
       const badge = status ? (badges[status] || '') : '';
-
       const completedSets = ex.sets.filter(s => s.done).length;
-      const totalSets = ex.sets.length;
 
       html += `<div class="card" id="ex-${ex.id}">
         <div class="card-header">
           <div style="flex:1">
             <div class="card-title">${ex.name}</div>
-            <div class="card-meta">${ex.targetSets} sets · ${ex.reps} reps · ${ex.rest}s rest · ${completedSets}/${totalSets} done</div>
+            <div class="card-meta">${ex.targetSets} sets · ${ex.reps} reps · ${ex.rest}s rest · ${completedSets}/${ex.sets.length} done</div>
           </div>
           ${badge}
         </div>
@@ -84,10 +79,10 @@ const Screens = {
         ${ex.sets.map((set, i) => `
           <div class="set-row" id="set-${ex.id}-${i}">
             <div class="set-num">${i+1}</div>
-            <input class="set-input ${set.done?'done':''}" type="number" inputmode="decimal" placeholder="${lastLoad || 'kg'}" value="${set.load || ''}" onchange="Screens.updateSet('${ex.id}', ${i}, 'load', this.value)" step="0.5" min="0">
-            <input class="set-input ${set.done?'done':''}" type="number" inputmode="numeric" placeholder="${lastReps || 'reps'}" value="${set.reps || ''}" onchange="Screens.updateSet('${ex.id}', ${i}, 'reps', this.value)" min="1" max="100">
-            <input class="set-input ${set.done?'done':''}" type="number" inputmode="decimal" placeholder="RIR" value="${set.rir !== undefined ? set.rir : ''}" onchange="Screens.updateSet('${ex.id}', ${i}, 'rir', this.value)" step="0.5" min="0" max="10">
-            <button class="tick-btn ${set.done?'done':''}" onclick="Screens.tickSet('${ex.id}', ${i})">
+            <input class="set-input ${set.done?'done':''}" type="number" inputmode="decimal" placeholder="${lastLoad || 'kg'}" value="${set.load || ''}" onchange="Screens.updateSet('${ex.id}',${i},'load',this.value)" step="0.5" min="0">
+            <input class="set-input ${set.done?'done':''}" type="number" inputmode="numeric" placeholder="${lastReps || 'reps'}" value="${set.reps || ''}" onchange="Screens.updateSet('${ex.id}',${i},'reps',this.value)" min="1" max="100">
+            <input class="set-input ${set.done?'done':''}" type="number" inputmode="decimal" placeholder="RIR" value="${set.rir !== undefined ? set.rir : ''}" onchange="Screens.updateSet('${ex.id}',${i},'rir',this.value)" step="0.5" min="0" max="10">
+            <button class="tick-btn ${set.done?'done':''}" onclick="Screens.tickSet('${ex.id}',${i})">
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><polyline points="2,7 5.5,10.5 12,3" stroke="#4afc7a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </button>
           </div>`).join('')}
@@ -100,50 +95,42 @@ const Screens = {
     }
 
     html += `
-      <button class="btn-primary" onclick="Screens.finishWorkout()">
-        Finish Workout
-      </button>
-      <button class="btn-secondary" onclick="Screens.cancelWorkout()">
-        Cancel / Discard
-      </button>
+      <button class="btn-primary" onclick="Screens.finishWorkout()">Finish Workout</button>
+      <button class="btn-secondary" onclick="Screens.cancelWorkout()">Cancel / Discard</button>
       <div style="height:16px"></div>`;
 
     container.innerHTML = html;
   },
 
-  startWorkout(dayId) {
-    const programme = DB.getProgramme();
+  async startWorkout(dayId) {
+    const programme = await DB.getProgramme();
     const day = programme.find(d => d.id === dayId);
     if (!day) return;
+    const week = DB.getCurrentWeek();
     const workout = {
       id: DB.newId(),
       dayId: day.id,
       dayLabel: day.label,
       date: DB.todayISO(),
-      week: DB.getCurrentWeek(),
+      week,
       started: Date.now(),
       exercises: day.exercises.map(ex => ({
-        id: ex.id,
-        name: ex.name,
-        targetSets: ex.sets,
-        reps: ex.reps,
-        rest: ex.rest,
-        rir: ex.rir,
+        id: ex.id, name: ex.name, targetSets: ex.sets,
+        reps: ex.reps, rest: ex.rest, rir: ex.rir,
         sets: Array.from({ length: ex.sets }, () => ({ load: '', reps: '', rir: '', done: false }))
       }))
     };
-    DB.saveActive(workout);
+    await DB.saveActive(workout);
     this.renderToday();
   },
 
-  updateSet(exId, setIdx, field, value) {
+  async updateSet(exId, setIdx, field, value) {
     const active = DB.getActive();
     if (!active) return;
     const ex = active.exercises.find(e => e.id === exId);
     if (!ex) return;
     ex.sets[setIdx][field] = value;
-    DB.saveActive(active);
-    // Update badge live
+    await DB.saveActive(active);
     const status = DB.getProgressionStatus(active.dayId, exId, ex.sets);
     const card = document.getElementById('ex-' + exId);
     if (!card) return;
@@ -156,7 +143,7 @@ const Screens = {
     }
   },
 
-  tickSet(exId, setIdx) {
+  async tickSet(exId, setIdx) {
     const active = DB.getActive();
     if (!active) return;
     const ex = active.exercises.find(e => e.id === exId);
@@ -164,46 +151,40 @@ const Screens = {
     const set = ex.sets[setIdx];
     if (!set.load || !set.reps) { App.toast('Enter load and reps first'); return; }
     set.done = !set.done;
-    DB.saveActive(active);
-    // Update UI for this row
+    await DB.saveActive(active);
     const row = document.getElementById('set-' + exId + '-' + setIdx);
     if (!row) return;
     row.querySelectorAll('.set-input').forEach(i => i.classList.toggle('done', set.done));
     const btn = row.querySelector('.tick-btn');
     if (btn) btn.classList.toggle('done', set.done);
-    if (set.done) {
-      App.toast('Set logged');
-      this.updateSet(exId, setIdx, 'done', true);
-    }
-    // Update meta
+    if (set.done) App.toast('Set logged');
     const card = document.getElementById('ex-' + exId);
     if (card) {
-      const active2 = DB.getActive();
-      const ex2 = active2.exercises.find(e => e.id === exId);
-      const done = ex2.sets.filter(s => s.done).length;
+      const done = ex.sets.filter(s => s.done).length;
       const meta = card.querySelector('.card-meta');
-      if (meta) meta.textContent = `${ex2.targetSets} sets · ${ex2.reps} reps · ${ex2.rest}s rest · ${done}/${ex2.sets.length} done`;
+      if (meta) meta.textContent = `${ex.targetSets} sets · ${ex.reps} reps · ${ex.rest}s rest · ${done}/${ex.sets.length} done`;
     }
   },
 
-  addSet(exId) {
+  async addSet(exId) {
     const active = DB.getActive();
     if (!active) return;
     const ex = active.exercises.find(e => e.id === exId);
     if (!ex) return;
     ex.sets.push({ load: '', reps: '', rir: '', done: false });
-    DB.saveActive(active);
+    await DB.saveActive(active);
     this.renderToday();
   },
 
-  finishWorkout() {
+  async finishWorkout() {
     const active = DB.getActive();
     if (!active) return;
     const loggedSets = active.exercises.flatMap(e => e.sets).filter(s => s.done).length;
     if (loggedSets === 0) { App.toast('Log at least one set first'); return; }
     active.finished = Date.now();
-    DB.saveSession(active);
-    DB.clearActive();
+    App.toast('Saving...');
+    await DB.saveSession(active);
+    await DB.clearActive();
     App.toast('Workout saved!');
     this.renderToday();
     this.renderProgress();
@@ -211,18 +192,18 @@ const Screens = {
     this.renderHistory();
   },
 
-  cancelWorkout() {
+  async cancelWorkout() {
     if (!confirm('Discard this workout? No data will be saved.')) return;
-    DB.clearActive();
+    await DB.clearActive();
     this.renderToday();
   },
 
-  changeWeek() {
+  async changeWeek() {
     const week = DB.getCurrentWeek();
     App.showModal('Select week', `
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:4px">
         ${Array.from({length:12},(_,i)=>i+1).map(w=>`
-          <button onclick="DB.setCurrentWeek(${w});App.closeModal();Screens.renderToday()" style="
+          <button onclick="DB.setCurrentWeek(${w});App.closeModal();Screens.renderToday();App._renderScreen('today')" style="
             padding:14px;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer;border:none;
             background:${w===week?'var(--green2)':'var(--bg3)'};
             color:${w===week?'var(--green)':'var(--text2)'};
@@ -234,15 +215,12 @@ const Screens = {
   // ══════════════════════════════════
   // PROGRESS SCREEN
   // ══════════════════════════════════
-  renderProgress() {
+  async renderProgress() {
     const container = document.getElementById('screen-progress');
-    const programme = DB.getProgramme();
+    container.innerHTML = `<div class="loading-state"><div class="loading-spinner"></div></div>`;
+    const programme = await DB.getProgramme();
     const allExercises = programme.flatMap(d => d.exercises);
-
-    const exWithHistory = allExercises.map(ex => {
-      const hist = DB.getE1RMHistory(ex.id);
-      return { ...ex, hist };
-    }).filter(ex => ex.hist.length > 0);
+    const exWithHistory = allExercises.map(ex => ({ ...ex, hist: DB.getE1RMHistory(ex.id) })).filter(ex => ex.hist.length > 0);
 
     if (exWithHistory.length === 0) {
       container.innerHTML = `
@@ -259,28 +237,17 @@ const Screens = {
 
     for (const ex of exWithHistory) {
       const hist = ex.hist;
-      const first = hist[0].e1rm;
-      const last  = hist[hist.length-1].e1rm;
-      const delta = last - first;
-      const deltaPct = Math.round((delta / first) * 100);
+      const first = hist[0].e1rm, last = hist[hist.length-1].e1rm;
+      const delta = last - first, deltaPct = Math.round((delta / first) * 100);
       const maxE = Math.max(...hist.map(h=>h.e1rm));
-
-      const barClass = (h) => {
-        const pct = h.e1rm / maxE;
-        if (pct >= 0.97) return 'peak';
-        if (pct >= 0.85) return 'hi';
-        if (pct >= 0.65) return 'mid';
-        return 'lo';
-      };
-
-      const displayHist = hist.slice(-8);
+      const barClass = h => { const p = h.e1rm/maxE; return p>=0.97?'peak':p>=0.85?'hi':p>=0.65?'mid':'lo'; };
 
       html += `
         <div class="card" onclick="Screens.toggleProgDetail('${ex.id}')">
           <div class="prog-card">
             <div class="prog-name">${ex.name}</div>
             <div class="mini-chart">
-              ${displayHist.map(h=>`<div class="mc-bar ${barClass(h)}" style="height:${Math.round((h.e1rm/maxE)*100)}%"></div>`).join('')}
+              ${hist.slice(-8).map(h=>`<div class="mc-bar ${barClass(h)}" style="height:${Math.round((h.e1rm/maxE)*100)}%"></div>`).join('')}
             </div>
             <div class="prog-footer">
               <span class="prog-e1rm">e1RM: ${first} → ${last} kg</span>
@@ -305,114 +272,81 @@ const Screens = {
           </div>
         </div>`;
     }
-
     container.innerHTML = html;
   },
 
   toggleProgDetail(exId) {
     const el = document.getElementById('detail-' + exId);
-    if (!el) return;
-    el.classList.toggle('open');
+    if (el) el.classList.toggle('open');
   },
 
   // ══════════════════════════════════
   // DELOAD SCREEN
   // ══════════════════════════════════
-  renderDeload() {
+  async renderDeload() {
     const container = document.getElementById('screen-deload');
     const analysis = DB.getDeloadAnalysis();
     const { fatigueScore, stalled, status, recommendation, totalPrimary, stalledCount } = analysis;
     const week = DB.getCurrentWeek();
-
     const statusConfig = {
-      good:    { dot: 'dot-green', label: 'Readiness: Good to train',      color: 'var(--green)' },
-      monitor: { dot: 'dot-amber', label: 'Readiness: Monitor closely',     color: 'var(--amber)' },
-      deload:  { dot: 'dot-red',   label: 'Deload recommended',             color: 'var(--red)'   },
+      good:    { dot: 'dot-green', label: 'Readiness: Good to train',  color: 'var(--green)' },
+      monitor: { dot: 'dot-amber', label: 'Readiness: Monitor closely', color: 'var(--amber)' },
+      deload:  { dot: 'dot-red',   label: 'Deload recommended',         color: 'var(--red)'   },
     };
     const sc = statusConfig[status];
     const fatigueColor = fatigueScore < 40 ? 'var(--green2)' : fatigueScore < 65 ? '#5a4a0a' : '#5a1a1a';
 
     container.innerHTML = `
       <div class="section-header"><div class="section-title">Deload AI</div></div>
-
-      <div class="card">
-        <div class="pad-card">
-          <div class="status-row">
-            <div class="status-dot ${sc.dot}"></div>
-            <span class="status-label" style="color:${sc.color}">${sc.label}</span>
-          </div>
-          <div style="font-size:12px;color:var(--text3);margin-bottom:4px">Accumulated fatigue score</div>
-          <div class="fatigue-track">
-            <div class="fatigue-fill" style="width:${fatigueScore}%;background:${fatigueColor}"></div>
-          </div>
-          <div class="fatigue-labels"><span>Recovery</span><span>${fatigueScore}/100</span><span>Overreach</span></div>
-          <div style="font-size:13px;color:var(--text2);margin-top:10px;line-height:1.5">Week ${week} of 8. ${stalledCount} of ${totalPrimary} tracked exercises showing plateau.</div>
-        </div>
-      </div>
-
+      <div class="card"><div class="pad-card">
+        <div class="status-row"><div class="status-dot ${sc.dot}"></div><span class="status-label" style="color:${sc.color}">${sc.label}</span></div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:4px">Accumulated fatigue score</div>
+        <div class="fatigue-track"><div class="fatigue-fill" style="width:${fatigueScore}%;background:${fatigueColor}"></div></div>
+        <div class="fatigue-labels"><span>Recovery</span><span>${fatigueScore}/100</span><span>Overreach</span></div>
+        <div style="font-size:13px;color:var(--text2);margin-top:10px;line-height:1.5">Week ${week} of 8. ${stalledCount} of ${totalPrimary} tracked exercises showing plateau.</div>
+      </div></div>
       ${stalled.length > 0 ? `
-      <div class="card">
-        <div class="pad-card">
-          <div class="status-row">
-            <div class="status-dot dot-amber"></div>
-            <span class="status-label" style="color:var(--amber)">Stalls detected — ${stalled.length} exercise${stalled.length>1?'s':''}</span>
-          </div>
-          <div class="stall-list">
-            ${stalled.map(s=>`
-              <div class="stall-item">
-                <span class="stall-name">${s.name}</span>
-                <span class="stall-wks">${s.weeks} sessions flat</span>
-              </div>`).join('')}
-          </div>
-          <div class="rec-box">
-            <div class="rec-label">Recommendation</div>
-            <div class="rec-text">${recommendation}</div>
-          </div>
+      <div class="card"><div class="pad-card">
+        <div class="status-row"><div class="status-dot dot-amber"></div><span class="status-label" style="color:var(--amber)">Stalls detected — ${stalled.length} exercise${stalled.length>1?'s':''}</span></div>
+        <div class="stall-list">${stalled.map(s=>`<div class="stall-item"><span class="stall-name">${s.name}</span><span class="stall-wks">${s.weeks} sessions flat</span></div>`).join('')}</div>
+        <div class="rec-box"><div class="rec-label">Recommendation</div><div class="rec-text">${recommendation}</div></div>
+      </div></div>` : `
+      <div class="card"><div class="pad-card">
+        <div class="rec-box"><div class="rec-label">Assessment</div><div class="rec-text">${recommendation}</div></div>
+      </div></div>`}
+      ${status === 'deload' ? `<button class="btn-primary" style="background:#5a1a1a;color:var(--red);border:1px solid #7a2a2a" onclick="Screens.triggerDeload()">Trigger Deload Week</button>` : ''}
+      <div class="card"><div class="pad-card">
+        <div style="font-size:13px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Detection logic</div>
+        <div class="algo-steps">
+          <div class="algo-step"><span class="algo-n">1.</span><span class="algo-t">Calculate e1RM per set using Epley formula: Load × (1 + reps/30)</span></div>
+          <div class="algo-step"><span class="algo-n">2.</span><span class="algo-t">Flag exercise if no e1RM improvement over 3+ consecutive sessions (&lt;2% change)</span></div>
+          <div class="algo-step"><span class="algo-n">3.</span><span class="algo-t">Track average RIR — drift below target range signals fatigue accumulation</span></div>
+          <div class="algo-step"><span class="algo-n">4.</span><span class="algo-t">If 60%+ of primary lifts stall simultaneously, trigger full programme deload</span></div>
+          <div class="algo-step"><span class="algo-n">5.</span><span class="algo-t">Deload = −40% load, −40% volume, same movement patterns for 1 week</span></div>
         </div>
-      </div>` : `
-      <div class="card">
-        <div class="pad-card">
-          <div class="rec-box">
-            <div class="rec-label">Assessment</div>
-            <div class="rec-text">${recommendation}</div>
-          </div>
-        </div>
-      </div>`}
-
-      ${status === 'deload' ? `
-      <button class="btn-primary" style="background:#5a1a1a;color:var(--red);border:1px solid #7a2a2a" onclick="Screens.triggerDeload()">
-        Trigger Deload Week
-      </button>` : ''}
-
-      <div class="card">
-        <div class="pad-card">
-          <div style="font-size:13px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Detection logic</div>
-          <div class="algo-steps">
-            <div class="algo-step"><span class="algo-n">1.</span><span class="algo-t">Calculate e1RM per set using Epley formula: Load × (1 + reps/30)</span></div>
-            <div class="algo-step"><span class="algo-n">2.</span><span class="algo-t">Flag exercise if no e1RM improvement over 3+ consecutive sessions (&lt;2% change)</span></div>
-            <div class="algo-step"><span class="algo-n">3.</span><span class="algo-t">Track average RIR — drift below target range signals fatigue accumulation</span></div>
-            <div class="algo-step"><span class="algo-n">4.</span><span class="algo-t">If 60%+ of primary lifts stall simultaneously, trigger full programme deload</span></div>
-            <div class="algo-step"><span class="algo-n">5.</span><span class="algo-t">Deload = −40% load, −40% volume, same movement patterns for 1 week</span></div>
-          </div>
-        </div>
-      </div>
+      </div></div>
+      <div style="height:12px"></div>
+      <div class="card"><div class="pad-card">
+        <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">Supabase connection test</div>
+        <button class="btn-secondary" style="font-size:13px;padding:10px" onclick="DB._testConnection()">Test sync connection</button>
+        <div id="sync-test-result" style="margin-top:10px;font-size:12px;color:var(--text2);line-height:1.6;word-break:break-all"></div>
+      </div></div>
       <div style="height:12px"></div>`;
   },
 
   triggerDeload() {
     App.showModal('Trigger deload week?', `
-      <div class="rec-text" style="margin-bottom:16px;line-height:1.6">This will log Week ${DB.getCurrentWeek()} as a deload. All loads reduced 40%, volume reduced 40% next session.</div>
-      <button class="btn-primary" style="background:#5a1a1a;color:var(--red);border:1px solid #7a2a2a" onclick="App.closeModal();App.toast('Deload week activated')">
-        Confirm Deload
-      </button>
+      <div class="rec-text" style="margin-bottom:16px;line-height:1.6">All loads reduced 40%, volume reduced 40% next session.</div>
+      <button class="btn-primary" style="background:#5a1a1a;color:var(--red);border:1px solid #7a2a2a" onclick="App.closeModal();App.toast('Deload week activated')">Confirm Deload</button>
       <button class="btn-secondary" onclick="App.closeModal()">Cancel</button>`);
   },
 
   // ══════════════════════════════════
   // HISTORY SCREEN
   // ══════════════════════════════════
-  renderHistory() {
+  async renderHistory() {
     const container = document.getElementById('screen-history');
+    container.innerHTML = `<div class="loading-state"><div class="loading-spinner"></div></div>`;
     const sessions = DB.getSessions();
 
     if (sessions.length === 0) {
@@ -430,26 +364,18 @@ const Screens = {
 
     for (const s of sessions) {
       const exercises = s.exercises || [];
-      const totalSets = exercises.flatMap(e=>e.sets).filter(s=>s.done).length;
-      const totalVol = exercises.flatMap(e=>e.sets).filter(s=>s.done && s.load && s.reps)
-        .reduce((sum,s)=>sum + parseFloat(s.load)*parseInt(s.reps), 0);
-
+      const totalSets = exercises.flatMap(e=>e.sets||[]).filter(s=>s.done).length;
+      const totalVol  = exercises.flatMap(e=>e.sets||[]).filter(s=>s.done&&s.load&&s.reps).reduce((sum,s)=>sum+parseFloat(s.load)*parseInt(s.reps),0);
       html += `
         <div class="card" onclick="Screens.showSessionDetail('${s.id}')">
           <div class="hist-session">
-            <div class="hist-date">
-              <span>${DB.formatDate(s.date)}</span>
-              <span style="font-size:11px;color:var(--text3)">W${s.week}</span>
-            </div>
+            <div class="hist-date"><span>${DB.formatDate(s.date)}</span><span style="font-size:11px;color:var(--text3)">W${s.week}</span></div>
             <div class="hist-day-label" style="color:var(--green);font-size:13px;font-weight:600;margin-bottom:8px">${s.dayLabel}</div>
             <div class="hist-exercises">
               ${exercises.slice(0,3).map(ex => {
-                const done = ex.sets.filter(s=>s.done&&s.load&&s.reps);
-                const top = done.length > 0 ? done[0] : null;
-                return top ? `<div class="hist-ex">
-                  <span class="hist-ex-name">${ex.name}</span>
-                  <span class="hist-ex-val">${top.load}kg × ${top.reps}</span>
-                </div>` : '';
+                const done = (ex.sets||[]).filter(s=>s.done&&s.load&&s.reps);
+                const top = done[0];
+                return top ? `<div class="hist-ex"><span class="hist-ex-name">${ex.name}</span><span class="hist-ex-val">${top.load}kg × ${top.reps}</span></div>` : '';
               }).join('')}
               ${exercises.length > 3 ? `<div style="font-size:11px;color:var(--text3)">+${exercises.length-3} more</div>` : ''}
             </div>
@@ -457,31 +383,29 @@ const Screens = {
           </div>
         </div>`;
     }
-
     container.innerHTML = html + '<div style="height:12px"></div>';
   },
 
-  showSessionDetail(sessionId) {
+  async showSessionDetail(sessionId) {
     const s = DB.getSession(sessionId);
     if (!s) return;
     const exercises = s.exercises || [];
     App.showModal(`${s.dayLabel} — W${s.week}`, `
       <div style="font-size:12px;color:var(--text3);margin-bottom:14px">${DB.formatDate(s.date)}</div>
       ${exercises.map(ex => {
-        const done = ex.sets.filter(s=>s.done&&s.load&&s.reps);
-        if (done.length===0) return '';
+        const done = (ex.sets||[]).filter(s=>s.done&&s.load&&s.reps);
+        if (!done.length) return '';
         const maxE = Math.max(...done.map(s=>DB.calcE1RM(parseFloat(s.load),parseInt(s.reps))));
-        return `
-          <div style="margin-bottom:14px">
-            <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px">${ex.name}</div>
-            ${done.map((s,i)=>`
-              <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;border-bottom:1px solid var(--border)">
-                <span style="color:var(--text3)">Set ${i+1}</span>
-                <span style="color:var(--text2)">${s.load}kg × ${s.reps} reps</span>
-                <span style="color:var(--text3)">e1RM ${DB.calcE1RM(parseFloat(s.load),parseInt(s.reps))}kg</span>
-              </div>`).join('')}
-            <div style="font-size:11px;color:var(--green);margin-top:4px">Peak e1RM: ${maxE}kg</div>
-          </div>`;
+        return `<div style="margin-bottom:14px">
+          <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px">${ex.name}</div>
+          ${done.map((s,i)=>`
+            <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;border-bottom:1px solid var(--border)">
+              <span style="color:var(--text3)">Set ${i+1}</span>
+              <span style="color:var(--text2)">${s.load}kg × ${s.reps} reps</span>
+              <span style="color:var(--text3)">e1RM ${DB.calcE1RM(parseFloat(s.load),parseInt(s.reps))}kg</span>
+            </div>`).join('')}
+          <div style="font-size:11px;color:var(--green);margin-top:4px">Peak e1RM: ${maxE}kg</div>
+        </div>`;
       }).join('')}
       <button class="btn-secondary" onclick="App.closeModal()">Close</button>`);
   },
@@ -489,23 +413,18 @@ const Screens = {
   // ══════════════════════════════════
   // PROGRAMME SCREEN
   // ══════════════════════════════════
-  renderProgramme() {
+  async renderProgramme() {
     const container = document.getElementById('screen-programme');
-    const programme = DB.getProgramme();
+    container.innerHTML = `<div class="loading-state"><div class="loading-spinner"></div></div>`;
+    const programme = await DB.getProgramme();
 
-    let html = `
-      <div class="section-header">
-        <div><div class="section-title">Program</div><div class="section-sub">Tap exercise to edit</div></div>
-      </div>`;
+    let html = `<div class="section-header"><div><div class="section-title">Program</div><div class="section-sub">Tap exercise to edit</div></div></div>`;
 
     for (const day of programme) {
       html += `
         <div class="card">
           <div class="programme-day">
-            <div class="prog-day-header">
-              ${day.label}
-              <button class="edit-btn" onclick="Screens.editDayName('${day.id}')">Rename</button>
-            </div>
+            <div class="prog-day-header">${day.label}<button class="edit-btn" onclick="Screens.editDayName('${day.id}')">Rename</button></div>
             <div class="prog-exercise-list">
               ${day.exercises.map(ex=>`
                 <div class="prog-ex-row" onclick="Screens.editExercise('${day.id}','${ex.id}')">
@@ -520,150 +439,108 @@ const Screens = {
           </div>
         </div>`;
     }
-
     container.innerHTML = html + '<div style="height:12px"></div>';
   },
 
-  editExercise(dayId, exId) {
-    const programme = DB.getProgramme();
+  async editExercise(dayId, exId) {
+    const programme = await DB.getProgramme();
     const day = programme.find(d=>d.id===dayId);
-    const ex = day ? day.exercises.find(e=>e.id===exId) : null;
+    const ex = day?.exercises.find(e=>e.id===exId);
     if (!ex) return;
     App.showModal(`Edit: ${ex.name}`, `
-      <div class="form-group">
-        <label class="form-label">Exercise name</label>
-        <input class="form-input" id="edit-name" value="${ex.name}">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Target sets</label>
-        <input class="form-input" id="edit-sets" type="number" value="${ex.sets}" min="1" max="10">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Rep range</label>
-        <input class="form-input" id="edit-reps" value="${ex.reps}" placeholder="e.g. 8–12">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Rest (seconds)</label>
-        <input class="form-input" id="edit-rest" type="number" value="${ex.rest}" min="30" max="600" step="10">
-      </div>
+      <div class="form-group"><label class="form-label">Exercise name</label><input class="form-input" id="edit-name" value="${ex.name}"></div>
+      <div class="form-group"><label class="form-label">Target sets</label><input class="form-input" id="edit-sets" type="number" value="${ex.sets}" min="1" max="10"></div>
+      <div class="form-group"><label class="form-label">Rep range</label><input class="form-input" id="edit-reps" value="${ex.reps}"></div>
+      <div class="form-group"><label class="form-label">Rest (seconds)</label><input class="form-input" id="edit-rest" type="number" value="${ex.rest}" min="30" max="600" step="10"></div>
       <button class="btn-primary" onclick="Screens.saveExercise('${dayId}','${exId}')">Save</button>
       <button class="btn-secondary" style="color:var(--red);border-color:#5a1a1a" onclick="Screens.deleteExercise('${dayId}','${exId}')">Delete exercise</button>
       <button class="btn-secondary" onclick="App.closeModal()">Cancel</button>`);
   },
 
-  saveExercise(dayId, exId) {
-    const programme = DB.getProgramme();
+  async saveExercise(dayId, exId) {
+    const programme = await DB.getProgramme();
     const day = programme.find(d=>d.id===dayId);
-    const ex = day ? day.exercises.find(e=>e.id===exId) : null;
+    const ex = day?.exercises.find(e=>e.id===exId);
     if (!ex) return;
     ex.name = document.getElementById('edit-name').value.trim() || ex.name;
     ex.sets = parseInt(document.getElementById('edit-sets').value) || ex.sets;
     ex.reps = document.getElementById('edit-reps').value.trim() || ex.reps;
     ex.rest = parseInt(document.getElementById('edit-rest').value) || ex.rest;
-    DB.saveProgramme(programme);
-    App.closeModal();
-    this.renderProgramme();
-    App.toast('Exercise updated');
+    await DB.saveProgramme(programme);
+    App.closeModal(); this.renderProgramme(); App.toast('Exercise updated');
   },
 
-  deleteExercise(dayId, exId) {
+  async deleteExercise(dayId, exId) {
     if (!confirm('Delete this exercise?')) return;
-    const programme = DB.getProgramme();
+    const programme = await DB.getProgramme();
     const day = programme.find(d=>d.id===dayId);
     if (!day) return;
     day.exercises = day.exercises.filter(e=>e.id!==exId);
-    DB.saveProgramme(programme);
-    App.closeModal();
-    this.renderProgramme();
-    App.toast('Exercise deleted');
+    await DB.saveProgramme(programme);
+    App.closeModal(); this.renderProgramme(); App.toast('Exercise deleted');
   },
 
-  addExercise(dayId) {
+  async addExercise(dayId) {
     App.showModal('Add exercise', `
-      <div class="form-group">
-        <label class="form-label">Exercise name</label>
-        <input class="form-input" id="new-ex-name" placeholder="e.g. Incline DB Press">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Target sets</label>
-        <input class="form-input" id="new-ex-sets" type="number" value="3" min="1" max="10">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Rep range</label>
-        <input class="form-input" id="new-ex-reps" value="8–12">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Rest (seconds)</label>
-        <input class="form-input" id="new-ex-rest" type="number" value="180" min="30" max="600" step="10">
-      </div>
+      <div class="form-group"><label class="form-label">Exercise name</label><input class="form-input" id="new-ex-name" placeholder="e.g. Incline DB Press"></div>
+      <div class="form-group"><label class="form-label">Target sets</label><input class="form-input" id="new-ex-sets" type="number" value="3" min="1" max="10"></div>
+      <div class="form-group"><label class="form-label">Rep range</label><input class="form-input" id="new-ex-reps" value="8–12"></div>
+      <div class="form-group"><label class="form-label">Rest (seconds)</label><input class="form-input" id="new-ex-rest" type="number" value="180" min="30" max="600" step="10"></div>
       <button class="btn-primary" onclick="Screens.confirmAddExercise('${dayId}')">Add Exercise</button>
       <button class="btn-secondary" onclick="App.closeModal()">Cancel</button>`);
   },
 
-  confirmAddExercise(dayId) {
+  async confirmAddExercise(dayId) {
     const name = document.getElementById('new-ex-name').value.trim();
     if (!name) { App.toast('Enter exercise name'); return; }
-    const programme = DB.getProgramme();
+    const programme = await DB.getProgramme();
     const day = programme.find(d=>d.id===dayId);
     if (!day) return;
     day.exercises.push({
-      id: DB.newId(),
-      name,
+      id: DB.newId(), name,
       sets: parseInt(document.getElementById('new-ex-sets').value) || 3,
       reps: document.getElementById('new-ex-reps').value.trim() || '8–12',
       rir: '1–2',
       rest: parseInt(document.getElementById('new-ex-rest').value) || 180,
     });
-    DB.saveProgramme(programme);
-    App.closeModal();
-    this.renderProgramme();
-    App.toast('Exercise added');
+    await DB.saveProgramme(programme);
+    App.closeModal(); this.renderProgramme(); App.toast('Exercise added');
   },
 
-  editDayName(dayId) {
-    const programme = DB.getProgramme();
+  async editDayName(dayId) {
+    const programme = await DB.getProgramme();
     const day = programme.find(d=>d.id===dayId);
     if (!day) return;
     App.showModal('Rename day', `
-      <div class="form-group">
-        <label class="form-label">Day label</label>
-        <input class="form-input" id="new-day-name" value="${day.label}">
-      </div>
+      <div class="form-group"><label class="form-label">Day label</label><input class="form-input" id="new-day-name" value="${day.label}"></div>
       <button class="btn-primary" onclick="Screens.saveDayName('${dayId}')">Save</button>
       <button class="btn-secondary" onclick="App.closeModal()">Cancel</button>`);
   },
 
-  saveDayName(dayId) {
+  async saveDayName(dayId) {
     const name = document.getElementById('new-day-name').value.trim();
     if (!name) return;
-    const programme = DB.getProgramme();
+    const programme = await DB.getProgramme();
     const day = programme.find(d=>d.id===dayId);
     if (!day) return;
     day.label = name;
-    DB.saveProgramme(programme);
-    App.closeModal();
-    this.renderProgramme();
-    App.toast('Day renamed');
+    await DB.saveProgramme(programme);
+    App.closeModal(); this.renderProgramme(); App.toast('Day renamed');
   },
 
-  addDay() {
+  async addDay() {
     App.showModal('Add training day', `
-      <div class="form-group">
-        <label class="form-label">Day label</label>
-        <input class="form-input" id="new-day-label" placeholder="e.g. Day 6 — Arms">
-      </div>
+      <div class="form-group"><label class="form-label">Day label</label><input class="form-input" id="new-day-label" placeholder="e.g. Day 6 — Arms"></div>
       <button class="btn-primary" onclick="Screens.confirmAddDay()">Add Day</button>
       <button class="btn-secondary" onclick="App.closeModal()">Cancel</button>`);
   },
 
-  confirmAddDay() {
+  async confirmAddDay() {
     const label = document.getElementById('new-day-label').value.trim();
     if (!label) { App.toast('Enter a day label'); return; }
-    const programme = DB.getProgramme();
+    const programme = await DB.getProgramme();
     programme.push({ id: DB.newId(), label, type: 'upper', exercises: [] });
-    DB.saveProgramme(programme);
-    App.closeModal();
-    this.renderProgramme();
-    App.toast('Day added');
+    await DB.saveProgramme(programme);
+    App.closeModal(); this.renderProgramme(); App.toast('Day added');
   },
 };
