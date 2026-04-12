@@ -8,7 +8,7 @@ const Screens = {
   renderToday() {
     const container = document.getElementById('screen-today');
     const active = DB.getActive();
-    const programme = DB.getProgram();
+    const programme = DB.getProgramme();
     const week = DB.getCurrentWeek();
 
     // Header right: week selector
@@ -117,7 +117,7 @@ const Screens = {
   },
 
   startWorkout(dayId) {
-    const programme = DB.getProgram();
+    const programme = DB.getProgramme();
     const day = programme.find(d => d.id === dayId);
     if (!day) return;
     const workout = {
@@ -241,7 +241,7 @@ const Screens = {
   // ══════════════════════════════════
   renderProgress() {
     const container = document.getElementById('screen-progress');
-    const programme = DB.getProgram();
+    const programme = DB.getProgramme();
     const allExercises = programme.flatMap(d => d.exercises);
 
     const exWithHistory = allExercises.map(ex => {
@@ -494,9 +494,9 @@ const Screens = {
   // ══════════════════════════════════
   // PROGRAMME SCREEN
   // ══════════════════════════════════
-  renderProgram() {
+  renderProgramme() {
     const container = document.getElementById('screen-programme');
-    const programme = DB.getProgram();
+    const programme = DB.getProgramme();
 
     let html = `
       <div class="section-header">
@@ -531,7 +531,7 @@ const Screens = {
   },
 
   editExercise(dayId, exId) {
-    const programme = DB.getProgram();
+    const programme = DB.getProgramme();
     const day = programme.find(d=>d.id===dayId);
     const ex = day ? day.exercises.find(e=>e.id===exId) : null;
     if (!ex) return;
@@ -558,7 +558,7 @@ const Screens = {
   },
 
   saveExercise(dayId, exId) {
-    const programme = DB.getProgram();
+    const programme = DB.getProgramme();
     const day = programme.find(d=>d.id===dayId);
     const ex = day ? day.exercises.find(e=>e.id===exId) : null;
     if (!ex) return;
@@ -566,21 +566,21 @@ const Screens = {
     ex.sets = parseInt(document.getElementById('edit-sets').value) || ex.sets;
     ex.reps = document.getElementById('edit-reps').value.trim() || ex.reps;
     ex.rest = parseInt(document.getElementById('edit-rest').value) || ex.rest;
-    DB.saveProgram(programme);
+    DB.saveProgramme(programme);
     App.closeModal();
-    this.renderProgram();
+    this.renderProgramme();
     App.toast('Exercise updated');
   },
 
   deleteExercise(dayId, exId) {
     if (!confirm('Delete this exercise?')) return;
-    const programme = DB.getProgram();
+    const programme = DB.getProgramme();
     const day = programme.find(d=>d.id===dayId);
     if (!day) return;
     day.exercises = day.exercises.filter(e=>e.id!==exId);
-    DB.saveProgram(programme);
+    DB.saveProgramme(programme);
     App.closeModal();
-    this.renderProgram();
+    this.renderProgramme();
     App.toast('Exercise deleted');
   },
 
@@ -609,7 +609,7 @@ const Screens = {
   confirmAddExercise(dayId) {
     const name = document.getElementById('new-ex-name').value.trim();
     if (!name) { App.toast('Enter exercise name'); return; }
-    const programme = DB.getProgram();
+    const programme = DB.getProgramme();
     const day = programme.find(d=>d.id===dayId);
     if (!day) return;
     day.exercises.push({
@@ -620,14 +620,14 @@ const Screens = {
       rir: '1–2',
       rest: parseInt(document.getElementById('new-ex-rest').value) || 180,
     });
-    DB.saveProgram(programme);
+    DB.saveProgramme(programme);
     App.closeModal();
-    this.renderProgram();
+    this.renderProgramme();
     App.toast('Exercise added');
   },
 
   editDayName(dayId) {
-    const programme = DB.getProgram();
+    const programme = DB.getProgramme();
     const day = programme.find(d=>d.id===dayId);
     if (!day) return;
     App.showModal('Rename day', `
@@ -642,13 +642,13 @@ const Screens = {
   saveDayName(dayId) {
     const name = document.getElementById('new-day-name').value.trim();
     if (!name) return;
-    const programme = DB.getProgram();
+    const programme = DB.getProgramme();
     const day = programme.find(d=>d.id===dayId);
     if (!day) return;
     day.label = name;
-    DB.saveProgram(programme);
+    DB.saveProgramme(programme);
     App.closeModal();
-    this.renderProgram();
+    this.renderProgramme();
     App.toast('Day renamed');
   },
 
@@ -665,11 +665,11 @@ const Screens = {
   confirmAddDay() {
     const label = document.getElementById('new-day-label').value.trim();
     if (!label) { App.toast('Enter a day label'); return; }
-    const programme = DB.getProgram();
+    const programme = DB.getProgramme();
     programme.push({ id: DB.newId(), label, type: 'upper', exercises: [] });
-    DB.saveProgram(programme);
+    DB.saveProgramme(programme);
     App.closeModal();
-    this.renderProgram();
+    this.renderProgramme();
     App.toast('Day added');
   },
 };
