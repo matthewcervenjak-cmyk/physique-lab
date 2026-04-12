@@ -1,14 +1,14 @@
 // v4 — busts all previous caches on install
-const CACHE = 'mpl-v12';
+const CACHE = 'mpl-v13';
 const ASSETS = [
-  '/?v=12',
+  '/?v=13',
   '/index.html',
-  '/css/app.css?v=12',
-  '/css/themes.css?v=12',
-  '/js/data.js?v=12',
-  '/js/screens.js?v=12',
-  '/js/rehab.js?v=12',
-  '/js/app.js?v=12',
+  '/css/app.css?v=13',
+  '/css/themes.css?v=13',
+  '/js/data.js?v=13',
+  '/js/screens.js?v=13',
+  '/js/rehab.js?v=13',
+  '/js/app.js?v=13',
   '/manifest.json',
   '/icons/logo.png',
   '/icons/jarjar.png',
