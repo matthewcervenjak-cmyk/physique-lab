@@ -13,34 +13,125 @@ const Screens = {
     const week = DB.getCurrentWeek();
     const programme = await DB.getProgramme();
 
-    if (!active) {
-      container.innerHTML = `
-        <div class="section-header">
-          <div><div class="section-title">Choose today's session</div><div class="section-sub">Week ${week} of 8</div></div>
-        </div>
-        ${programme.map(day => `
-          <div class="card" style="cursor:pointer" onclick="Screens.startWorkout('${day.id}')">
-            <div class="card-header">
-              <div>
-                <div class="card-title">${day.label}</div>
-                <div class="card-meta">${day.exercises.length} exercises</div>
-              </div>
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M7 5l5 5-5 5" stroke="#4a7a4a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </div>
-          </div>`).join('')}
-        <div class="card" style="margin-top:4px">
-          <div class="pad-card">
-            <div class="text-muted text-sm" style="line-height:1.6">
-              Week ${week} of 8 · Data-driven deload triggers automatically when progress stalls.
-            </div>
-          </div>
-        </div>`;
+    // If there's an active (in-progress) workout, show logging UI
+    if (active) {
+      const day = programme.find(d => d.id === active.dayId);
+      if (!day) { await DB.clearActive(); this.renderToday(); return; }
+      this._renderActiveWorkout(container, active, day, week);
       return;
     }
 
-    const day = programme.find(d => d.id === active.dayId);
-    if (!day) { await DB.clearActive(); this.renderToday(); return; }
+    // Check if there's a completed session from today or the most recent one to show
+    const sessions = DB.getSessions();
+    const lastSession = sessions[0] || null;
 
+    if (lastSession) {
+      // Show the last completed session as read-only summary + option to start new
+      this._renderCompletedSession(container, lastSession, programme, week);
+      return;
+    }
+
+    // No sessions at all — show day picker
+    this._renderDayPicker(container, programme, week);
+  },
+
+  _renderDayPicker(container, programme, week) {
+    container.innerHTML = `
+      <div class="section-header">
+        <div><div class="section-title">Choose today's session</div><div class="section-sub">Week ${week} of 8</div></div>
+      </div>
+      ${programme.map(day => `
+        <div class="card" style="cursor:pointer" onclick="Screens.startWorkout('${day.id}')">
+          <div class="card-header">
+            <div>
+              <div class="card-title">${day.label}</div>
+              <div class="card-meta">${day.exercises.length} exercises</div>
+            </div>
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M7 5l5 5-5 5" stroke="#4a7a4a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+        </div>`).join('')}
+      <div class="card" style="margin-top:4px">
+        <div class="pad-card">
+          <div class="text-muted text-sm" style="line-height:1.6">
+            Week ${week} of 8 · Data-driven deload triggers automatically when progress stalls.
+          </div>
+        </div>
+      </div>`;
+  },
+
+  _renderCompletedSession(container, session, programme, week) {
+    const exercises = session.exercises || [];
+    const totalVol = exercises.flatMap(e => e.sets || []).filter(s => s.done && s.load && s.reps)
+      .reduce((sum, s) => sum + parseFloat(s.load) * parseInt(s.reps), 0);
+    const totalSets = exercises.flatMap(e => e.sets || []).filter(s => s.done).length;
+    const isToday = session.date === DB.todayISO();
+
+    let html = `
+      <div class="section-header">
+        <div>
+          <div class="section-title">${session.dayLabel}</div>
+          <div class="section-sub">${isToday ? 'Today' : DB.formatDate(session.date)} · Week ${session.week} · ${totalSets} sets · ${Math.round(totalVol).toLocaleString()} kg total</div>
+        </div>
+        <span class="badge badge-pr" style="align-self:center">✓ Done</span>
+      </div>`;
+
+    for (const ex of exercises) {
+      const doneSets = (ex.sets || []).filter(s => s.done && s.load && s.reps);
+      if (!doneSets.length) continue;
+      const maxE1RM = Math.max(...doneSets.map(s => DB.calcE1RM(parseFloat(s.load), parseInt(s.reps))));
+
+      html += `
+        <div class="card">
+          <div class="card-header">
+            <div style="flex:1">
+              <div class="card-title">${ex.name}</div>
+              <div class="card-meta">${doneSets.length} sets · best e1RM ${maxE1RM} kg</div>
+            </div>
+          </div>
+          <div class="col-heads">
+            <div class="col-head"></div>
+            <div class="col-head">Load (kg)</div>
+            <div class="col-head">Reps</div>
+            <div class="col-head">RIR</div>
+            <div class="col-head" style="font-size:10px;color:var(--text3);text-align:center">e1RM</div>
+          </div>
+          ${doneSets.map((set, i) => {
+            const e1rm = DB.calcE1RM(parseFloat(set.load), parseInt(set.reps));
+            return `
+            <div class="set-row" style="grid-template-columns:26px 1fr 1fr 1fr 1fr">
+              <div class="set-num">${i+1}</div>
+              <div class="set-input done" style="display:flex;align-items:center;justify-content:center;font-size:15px">${set.load}</div>
+              <div class="set-input done" style="display:flex;align-items:center;justify-content:center;font-size:15px">${set.reps}</div>
+              <div class="set-input done" style="display:flex;align-items:center;justify-content:center;font-size:15px">${set.rir !== '' && set.rir !== undefined ? set.rir : '—'}</div>
+              <div class="set-input" style="display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--text2)">${e1rm}</div>
+            </div>`;
+          }).join('')}
+          <div style="height:8px"></div>
+        </div>`;
+    }
+
+    html += `
+      <div style="margin-top:4px">
+        <button class="btn-primary" onclick="Screens._showDayPicker()">+ Start new session</button>
+        <button class="btn-secondary" onclick="Screens._showSessionHistory()">View session history</button>
+      </div>
+      <div style="height:16px"></div>`;
+
+    container.innerHTML = html;
+  },
+
+  async _showDayPicker() {
+    const container = document.getElementById('screen-today');
+    const week = DB.getCurrentWeek();
+    const programme = await DB.getProgramme();
+    this._renderDayPicker(container, programme, week);
+  },
+
+  _showSessionHistory() {
+    App.navigate('history');
+  },
+
+  _renderActiveWorkout(container, active, day, week) {
     let html = `
       <div class="section-header">
         <div>
@@ -79,9 +170,9 @@ const Screens = {
         ${ex.sets.map((set, i) => `
           <div class="set-row" id="set-${ex.id}-${i}">
             <div class="set-num">${i+1}</div>
-            <input class="set-input ${set.done?'done':''}" type="number" inputmode="decimal" placeholder="${lastLoad || 'kg'}" value="${set.load || ''}" onchange="Screens.updateSet('${ex.id}',${i},'load',this.value)" step="0.5" min="0">
-            <input class="set-input ${set.done?'done':''}" type="number" inputmode="numeric" placeholder="${lastReps || 'reps'}" value="${set.reps || ''}" onchange="Screens.updateSet('${ex.id}',${i},'reps',this.value)" min="1" max="100">
-            <input class="set-input ${set.done?'done':''}" type="number" inputmode="decimal" placeholder="RIR" value="${set.rir !== undefined ? set.rir : ''}" onchange="Screens.updateSet('${ex.id}',${i},'rir',this.value)" step="0.5" min="0" max="10">
+            <input class="set-input ${set.done?'done':''}" type="number" inputmode="decimal" placeholder="${lastLoad || 'kg'}" value="${set.load || ''}" oninput="Screens.updateSet('${ex.id}',${i},'load',this.value)" step="0.5" min="0">
+            <input class="set-input ${set.done?'done':''}" type="number" inputmode="numeric" placeholder="${lastReps || 'reps'}" value="${set.reps || ''}" oninput="Screens.updateSet('${ex.id}',${i},'reps',this.value)" min="1" max="100">
+            <input class="set-input ${set.done?'done':''}" type="number" inputmode="decimal" placeholder="RIR" value="${set.rir !== undefined && set.rir !== '' ? set.rir : ''}" oninput="Screens.updateSet('${ex.id}',${i},'rir',this.value)" step="0.5" min="0" max="10">
             <button class="tick-btn ${set.done?'done':''}" onclick="Screens.tickSet('${ex.id}',${i})">
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><polyline points="2,7 5.5,10.5 12,3" stroke="#4afc7a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </button>
@@ -107,6 +198,23 @@ const Screens = {
     const day = programme.find(d => d.id === dayId);
     if (!day) return;
     const week = DB.getCurrentWeek();
+
+    // Pre-populate each exercise's sets with last session's values as starting point
+    const exercises = day.exercises.map(ex => {
+      const lastEx = DB.getLastSession(dayId, ex.id);
+      const lastSets = lastEx ? (lastEx.sets || []).filter(s => s.load && s.reps) : [];
+      return {
+        id: ex.id, name: ex.name, targetSets: ex.sets,
+        reps: ex.reps, rest: ex.rest, rir: ex.rir,
+        sets: Array.from({ length: ex.sets }, (_, i) => ({
+          load: lastSets[i] ? lastSets[i].load : '',
+          reps: lastSets[i] ? lastSets[i].reps : '',
+          rir:  lastSets[i] ? (lastSets[i].rir || '') : '',
+          done: false,
+        }))
+      };
+    });
+
     const workout = {
       id: DB.newId(),
       dayId: day.id,
@@ -114,11 +222,7 @@ const Screens = {
       date: DB.todayISO(),
       week,
       started: Date.now(),
-      exercises: day.exercises.map(ex => ({
-        id: ex.id, name: ex.name, targetSets: ex.sets,
-        reps: ex.reps, rest: ex.rest, rir: ex.rir,
-        sets: Array.from({ length: ex.sets }, () => ({ load: '', reps: '', rir: '', done: false }))
-      }))
+      exercises,
     };
     await DB.saveActive(workout);
     this.renderToday();
@@ -186,7 +290,12 @@ const Screens = {
     await DB.saveSession(active);
     await DB.clearActive();
     App.toast('Workout saved!');
-    this.renderToday();
+    // Show the completed session summary in Today tab
+    const container = document.getElementById('screen-today');
+    const week = DB.getCurrentWeek();
+    const programme = await DB.getProgramme();
+    this._renderCompletedSession(container, active, programme, week);
+    // Refresh other screens in background
     this.renderProgress();
     this.renderDeload();
     this.renderHistory();
