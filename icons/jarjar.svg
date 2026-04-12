@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80">
+  <!-- Left ear / floppy appendage -->
+  <ellipse cx="14" cy="38" rx="9" ry="22" fill="#7a9a6a" transform="rotate(-18 14 38)"/>
+  <ellipse cx="14" cy="38" rx="6" ry="18" fill="#5a7a4a" transform="rotate(-18 14 38)"/>
+  <!-- Right ear / floppy appendage -->
+  <ellipse cx="66" cy="38" rx="9" ry="22" fill="#7a9a6a" transform="rotate(18 66 38)"/>
+  <ellipse cx="66" cy="38" rx="6" ry="18" fill="#5a7a4a" transform="rotate(18 66 38)"/>
+  <!-- Long neck -->
+  <rect x="32" y="48" width="16" height="18" rx="7" fill="#8aaa74"/>
+  <!-- Head -->
+  <ellipse cx="40" cy="36" rx="22" ry="20" fill="#8aaa74"/>
+  <!-- Head shading -->
+  <ellipse cx="40" cy="40" rx="18" ry="14" fill="#7a9a64" opacity="0.4"/>
+  <!-- Left eye stalk -->
+  <rect x="24" y="20" width="5" height="12" rx="2.5" fill="#6a8a54"/>
+  <!-- Right eye stalk -->
+  <rect x="51" y="20" width="5" height="12" rx="2.5" fill="#6a8a54"/>
+  <!-- Left eye -->
+  <circle cx="26.5" cy="20" r="7" fill="#f0e8c0"/>
+  <circle cx="26.5" cy="20" r="5" fill="#c8a830"/>
+  <circle cx="26.5" cy="20" r="3" fill="#1a1a0a"/>
+  <circle cx="28" cy="18.5" r="1.2" fill="white" opacity="0.9"/>
+  <!-- Right eye -->
+  <circle cx="53.5" cy="20" r="7" fill="#f0e8c0"/>
+  <circle cx="53.5" cy="20" r="5" fill="#c8a830"/>
+  <circle cx="53.5" cy="20" r="3" fill="#1a1a0a"/>
+  <circle cx="55" cy="18.5" r="1.2" fill="white" opacity="0.9"/>
+  <!-- Big Gungan snout / bill -->
+  <ellipse cx="40" cy="46" rx="14" ry="8" fill="#7a9a64"/>
+  <ellipse cx="40" cy="48" rx="11" ry="5" fill="#6a8a54"/>
+  <!-- Nostrils -->
+  <ellipse cx="36" cy="45" rx="2.5" ry="1.8" fill="#4a6a38"/>
+  <ellipse cx="44" cy="45" rx="2.5" ry="1.8" fill="#4a6a38"/>
+  <!-- Mouth — goofy grin -->
+  <path d="M30 51 Q40 58 50 51" stroke="#4a6a38" stroke-width="2" fill="none" stroke-linecap="round"/>
+  <!-- Teeth -->
+  <rect x="36" y="51" width="4" height="4" rx="1" fill="#e8dfa0"/>
+  <rect x="41" y="51" width="4" height="4" rx="1" fill="#e8dfa0"/>
+</svg>
