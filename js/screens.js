@@ -77,16 +77,17 @@ const Screens = {
 
     for (const ex of exercises) {
       const doneSets = (ex.sets || []).filter(s => s.done && s.load && s.reps);
-      if (!doneSets.length) continue;
-      const maxE1RM = Math.max(...doneSets.map(s => DB.calcE1RM(parseFloat(s.load), parseInt(s.reps))));
+      const allSets = ex.sets || [];
+      const maxE1RM = doneSets.length > 0 ? Math.max(...doneSets.map(s => DB.calcE1RM(parseFloat(s.load), parseInt(s.reps)))) : null;
 
       html += `
         <div class="card">
           <div class="card-header">
             <div style="flex:1">
               <div class="card-title">${ex.name}</div>
-              <div class="card-meta">${doneSets.length} sets · best e1RM ${maxE1RM} kg</div>
+              <div class="card-meta">${doneSets.length > 0 ? `${doneSets.length} sets logged · best e1RM ${maxE1RM} kg` : 'Not logged this session'}</div>
             </div>
+            ${doneSets.length === 0 ? '<span class="badge badge-same">—</span>' : ''}
           </div>
           <div class="col-heads">
             <div class="col-head"></div>
@@ -95,14 +96,15 @@ const Screens = {
             <div class="col-head">RIR</div>
             <div class="col-head" style="font-size:10px;color:var(--text3);text-align:center">e1RM</div>
           </div>
-          ${doneSets.map((set, i) => {
-            const e1rm = DB.calcE1RM(parseFloat(set.load), parseInt(set.reps));
+          ${allSets.map((set, i) => {
+            const hasData = set.load && set.reps;
+            const e1rm = hasData ? DB.calcE1RM(parseFloat(set.load), parseInt(set.reps)) : '—';
             return `
             <div class="set-row" style="grid-template-columns:26px 1fr 1fr 1fr 1fr">
               <div class="set-num">${i+1}</div>
-              <div class="set-input done" style="display:flex;align-items:center;justify-content:center;font-size:15px">${set.load}</div>
-              <div class="set-input done" style="display:flex;align-items:center;justify-content:center;font-size:15px">${set.reps}</div>
-              <div class="set-input done" style="display:flex;align-items:center;justify-content:center;font-size:15px">${set.rir !== '' && set.rir !== undefined ? set.rir : '—'}</div>
+              <div class="set-input ${set.done?'done':''}" style="display:flex;align-items:center;justify-content:center;font-size:15px;color:${hasData?'':'var(--text3)'}">${set.load || '—'}</div>
+              <div class="set-input ${set.done?'done':''}" style="display:flex;align-items:center;justify-content:center;font-size:15px;color:${hasData?'':'var(--text3)'}">${set.reps || '—'}</div>
+              <div class="set-input ${set.done?'done':''}" style="display:flex;align-items:center;justify-content:center;font-size:15px;color:${hasData?'':'var(--text3)'}">${set.rir !== '' && set.rir !== undefined ? set.rir : '—'}</div>
               <div class="set-input" style="display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--text2)">${e1rm}</div>
             </div>`;
           }).join('')}
