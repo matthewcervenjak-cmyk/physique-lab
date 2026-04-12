@@ -11,12 +11,7 @@ const Screens = {
     const programme = DB.getProgramme();
     const week = DB.getCurrentWeek();
 
-    // Header right: week selector
-    document.getElementById('header-right').innerHTML = `
-      <button class="header-btn" onclick="Screens.changeWeek()">
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 4h10M4 2v2M10 2v2M2 5v6a1 1 0 001 1h8a1 1 0 001-1V5H2z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
-        Week ${week}
-      </button>`;
+    // header-right is managed centrally by App._renderScreen()
 
     if (!active) {
       // No active workout — show day picker
@@ -501,7 +496,6 @@ const Screens = {
     let html = `
       <div class="section-header">
         <div><div class="section-title">Program</div><div class="section-sub">Tap exercise to edit</div></div>
-        <button class="header-btn" onclick="Screens.addDay()">+ Day</button>
       </div>`;
 
     for (const day of programme) {

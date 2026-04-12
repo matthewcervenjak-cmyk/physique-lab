@@ -1,4 +1,4 @@
-const CACHE = 'mpl-v2';
+const CACHE = 'mpl-v3';
 const ASSETS = [
   '/',
   '/index.html',
