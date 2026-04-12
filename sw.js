@@ -1,12 +1,15 @@
-const CACHE = 'mpl-v1';
+const CACHE = 'mpl-v2';
 const ASSETS = [
   '/',
   '/index.html',
   '/css/app.css',
+  '/css/themes.css',
   '/js/data.js',
   '/js/screens.js',
+  '/js/rehab.js',
   '/js/app.js',
   '/manifest.json',
+  '/icons/logo.png',
 ];
 
 self.addEventListener('install', e => {
