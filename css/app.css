@@ -544,8 +544,8 @@ body.theme-lynny .loading-spinner { border-top-color: #fc7ab0; }
 }
 .log-input:focus { outline: none; border-color: var(--border2); }
 .log-input.done { border-color: var(--green2); background: #0a1a0d; color: var(--green); }
-.log-input::placeholder { color: #3a6a5a; font-size: 13px; }
-.log-input.has-prev::placeholder { color: #4a8a6a; font-size: 13px; }
+.log-input::placeholder { color: #4a6a5a; font-size: 13px; opacity: 1; }
+.log-input.has-prev::placeholder { color: #5a8a72; font-size: 13px; opacity: 1; }
 .log-e1rm {
   font-size: 12px; color: var(--text2); text-align: center;
   padding: 7px 3px; background: var(--bg3); border-radius: 6px;

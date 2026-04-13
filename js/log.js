@@ -76,16 +76,17 @@ const Log = {
       this._sessions[key] = session;
     }
 
+    // Get most recent SAVED session for this day from any prior week
+    const prevSession = this._getPrevSession(week, day.id);
+
     let html = `<div class="day-body">`;
 
     for (const ex of session.exercises) {
-      // Get previous week's data for comparison
-      const prevSession = this._getPrevSession(week, day.id);
       const prevEx = prevSession ? (prevSession.exercises||[]).find(e=>e.id===ex.id) : null;
       const prevSets = prevEx ? (prevEx.sets||[]).filter(s=>s.load&&s.reps) : [];
       const prevBest = prevSets.length ? Math.max(...prevSets.map(s=>DB.calcE1RM(parseFloat(s.load),parseInt(s.reps)))) : null;
+      const prevWeekNum = prevSession ? prevSession.week : null;
 
-      // Current best e1RM
       const curSets = (ex.sets||[]).filter(s=>s.load&&s.reps);
       const curBest = curSets.length ? Math.max(...curSets.map(s=>DB.calcE1RM(parseFloat(s.load),parseInt(s.reps)))) : null;
 
@@ -105,8 +106,6 @@ const Log = {
             </div>
             ${trendBadge}
           </div>
-
-          <!-- Column headers -->
           <div class="log-col-heads">
             <div class="lch">Set</div>
             <div class="lch">Load kg</div>
@@ -114,13 +113,9 @@ const Log = {
             <div class="lch">RIR</div>
             <div class="lch">e1RM</div>
           </div>
-
-          <!-- Set rows -->
           ${ex.sets.map((set,i) => this._renderSetRow(day.id, ex.id, ex, set, i, prevSets)).join('')}
-
           <button class="log-add-set" onclick="Log.addSet('${day.id}','${ex.id}')">+ set</button>
-
-          ${prevBest ? `<div class="prev-compare">Prev best e1RM: <strong>${prevBest}kg</strong></div>` : ''}
+          ${prevBest ? `<div class="prev-compare">W${prevWeekNum} best e1RM: <strong>${prevBest}kg</strong> &nbsp;·&nbsp; grey = last saved</div>` : '<div class="prev-compare" style="color:var(--text3)">No prior data — enter your numbers</div>'}
         </div>`;
     }
 

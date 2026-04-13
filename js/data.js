@@ -147,28 +147,9 @@ const DB = {
     const existing = allSessions.find(s => s.weekDayKey === key);
     if (existing) return existing;
 
-    // Create blank pre-populated from previous week
-    const prevSessions = allSessions
-      .filter(s => s.dayId === dayId && s.week < week && s.saved)
-      .sort((a, b) => b.week - a.week);
-    const prevSession = prevSessions[0] || null;
+    // Create a blank session — no values copied forward, placeholders handled in UI
     const day = programme.find(d => d.id === dayId);
     if (!day) return null;
-
-    const exercises = day.exercises.map(ex => {
-      const prevEx = prevSession ? (prevSession.exercises||[]).find(e=>e.id===ex.id) : null;
-      const prevSets = prevEx ? (prevEx.sets||[]) : [];
-      return {
-        id: ex.id, name: ex.name, targetSets: ex.sets,
-        reps: ex.reps, rest: ex.rest, rir: ex.rir,
-        sets: Array.from({ length: ex.sets }, (_, i) => ({
-          load: prevSets[i]?.load || '',
-          reps: prevSets[i]?.reps || '',
-          rir:  prevSets[i]?.rir  || '',
-          done: false,
-        }))
-      };
-    });
 
     return {
       id:         `${CURRENT_PROFILE}_${key}`,
@@ -177,7 +158,13 @@ const DB = {
       dayLabel:   day.label,
       date:       this.todayISO(),
       week,
-      exercises,
+      exercises:  day.exercises.map(ex => ({
+        id: ex.id, name: ex.name, targetSets: ex.sets,
+        reps: ex.reps, rest: ex.rest, rir: ex.rir,
+        sets: Array.from({ length: ex.sets }, () => ({
+          load: '', reps: '', rir: '', done: false,
+        }))
+      })),
       saved: false,
     };
   },
@@ -196,43 +183,25 @@ const DB = {
   async getOrCreateSession(week, dayId, programme) {
     const existing = await this.getWeekDaySession(week, dayId);
     if (existing) return existing;
-
-    // Create new — pre-populate from the most recent session for this dayId
-    const allSessions = LOCAL.get('sessions', []);
-    const prevSessions = allSessions
-      .filter(s => s.dayId === dayId && s.week < week)
-      .sort((a, b) => b.week - a.week);
-    const prevSession = prevSessions[0] || null;
-
     const day = programme.find(d => d.id === dayId);
     if (!day) return null;
-
-    const exercises = day.exercises.map(ex => {
-      const prevEx = prevSession ? (prevSession.exercises || []).find(e => e.id === ex.id) : null;
-      const prevSets = prevEx ? (prevEx.sets || []) : [];
-      return {
-        id: ex.id, name: ex.name, targetSets: ex.sets,
-        reps: ex.reps, rest: ex.rest, rir: ex.rir,
-        sets: Array.from({ length: ex.sets }, (_, i) => ({
-          load: prevSets[i] ? (prevSets[i].load || '') : '',
-          reps: prevSets[i] ? (prevSets[i].reps || '') : '',
-          rir:  prevSets[i] ? (prevSets[i].rir  || '') : '',
-          done: false,
-        }))
-      };
-    });
-
-    const session = {
-      id:         `${CURRENT_PROFILE}_${this._sessionKey(week, dayId)}`,
-      weekDayKey: this._sessionKey(week, dayId),
+    const key = this._sessionKey(week, dayId);
+    return {
+      id:         `${CURRENT_PROFILE}_${key}`,
+      weekDayKey: key,
       dayId,
       dayLabel:   day.label,
       date:       this.todayISO(),
       week,
-      exercises,
-      saved:      false,
+      exercises:  day.exercises.map(ex => ({
+        id: ex.id, name: ex.name, targetSets: ex.sets,
+        reps: ex.reps, rest: ex.rest, rir: ex.rir,
+        sets: Array.from({ length: ex.sets }, () => ({
+          load: '', reps: '', rir: '', done: false,
+        }))
+      })),
+      saved: false,
     };
-    return session;
   },
 
   // Save a week+day session (upsert by weekDayKey)
