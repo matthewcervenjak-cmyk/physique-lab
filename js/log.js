@@ -141,23 +141,26 @@ const Log = {
     const e1rm = (load && reps) ? DB.calcE1RM(parseFloat(load), parseInt(reps)) : '';
     const prevLoad = prevSets[i] ? prevSets[i].load : '';
     const prevReps = prevSets[i] ? prevSets[i].reps : '';
+    const prevRir  = prevSets[i] ? (prevSets[i].rir || '') : '';
+    // Show prev e1RM as placeholder in last column when current row is empty
+    const prevE1rm = (prevLoad && prevReps) ? DB.calcE1RM(parseFloat(prevLoad), parseInt(prevReps)) : '';
 
     return `
       <div class="log-set-row ${set.done?'set-done':''}" id="logset-${dayId}-${exId}-${i}">
         <div class="log-set-num">${i+1}</div>
-        <input class="log-input ${set.done?'done':''}" type="number" inputmode="decimal"
+        <input class="log-input ${set.done?'done':''} ${(!load && prevLoad)?'has-prev':''}" type="number" inputmode="decimal"
           placeholder="${prevLoad||''}" value="${load}"
           oninput="Log.onInput('${dayId}','${exId}',${i},'load',this.value)"
           step="0.5" min="0">
-        <input class="log-input ${set.done?'done':''}" type="number" inputmode="numeric"
+        <input class="log-input ${set.done?'done':''} ${(!reps && prevReps)?'has-prev':''}" type="number" inputmode="numeric"
           placeholder="${prevReps||''}" value="${reps}"
           oninput="Log.onInput('${dayId}','${exId}',${i},'reps',this.value)"
           min="1" max="200">
-        <input class="log-input ${set.done?'done':''}" type="number" inputmode="decimal"
-          placeholder="—" value="${rir}"
+        <input class="log-input ${set.done?'done':''} ${(!rir && prevRir)?'has-prev':''}" type="number" inputmode="decimal"
+          placeholder="${prevRir||'—'}" value="${rir}"
           oninput="Log.onInput('${dayId}','${exId}',${i},'rir',this.value)"
           step="0.5" min="0" max="10">
-        <div class="log-e1rm">${e1rm || '—'}</div>
+        <div class="log-e1rm ${!e1rm && prevE1rm ? 'prev-val' : ''}">${e1rm || (prevE1rm ? prevE1rm : '—')}</div>
       </div>`;
   },
 
