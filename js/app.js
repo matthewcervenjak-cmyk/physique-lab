@@ -125,6 +125,7 @@ const App = {
     if (screenId === 'deload')    Screens.renderDeload();
     if (screenId === 'programme') Screens.renderProgramme();
     if (screenId === 'rehab')     Rehab.renderRehab();
+    if (screenId === 'steps')     Steps.render();
   },
 
   showModal(title, contentHTML) {

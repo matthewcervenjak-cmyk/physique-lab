@@ -581,3 +581,135 @@ body.theme-lynny .week-tab.active { background: #6a1a3a; border-color: #9a2a5a; 
 body.theme-lynny .day-card.open { border-color: #6a1a3a; }
 body.theme-lynny .log-input.done { border-color: #6a1a3a; background: #1a0812; color: #fc7ab0; }
 body.theme-lynny .log-save-btn { background: #6a1a3a; color: #fc7ab0; }
+
+/* ══ STEPS SCREEN ══ */
+
+.steps-hero {
+  background: var(--bg2); border: 1.5px solid var(--border);
+  border-radius: var(--radius); padding: 20px 16px 16px;
+  margin-bottom: 12px; text-align: center;
+}
+.steps-hero-label { font-size: 12px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+
+.steps-input-wrap { display: flex; align-items: baseline; justify-content: center; gap: 8px; margin-bottom: 14px; }
+.steps-big-input {
+  background: none; border: none; outline: none;
+  font-size: 52px; font-weight: 700; color: var(--text);
+  width: 200px; text-align: center; font-family: inherit;
+  -webkit-appearance: none; appearance: none;
+}
+.steps-big-input::placeholder { color: var(--border2); }
+.steps-unit { font-size: 16px; color: var(--text3); padding-bottom: 8px; }
+
+.steps-progress-track {
+  height: 8px; background: var(--bg3); border-radius: 4px;
+  overflow: hidden; margin-bottom: 8px;
+}
+.steps-progress-fill {
+  height: 100%; border-radius: 4px;
+  background: var(--green2); transition: width 0.4s ease, background 0.3s;
+}
+.steps-progress-fill.met { background: var(--green); }
+
+.steps-progress-label {
+  display: flex; justify-content: space-between;
+  font-size: 12px; color: var(--text3); margin-bottom: 14px;
+}
+.steps-met-badge { color: var(--green); font-weight: 700; }
+
+.steps-log-btn {
+  width: 100%; background: var(--green2); color: var(--green);
+  border: none; border-radius: 8px; padding: 12px;
+  font-size: 14px; font-weight: 700; cursor: pointer;
+  font-family: inherit; transition: all 0.15s;
+}
+.steps-log-btn:active { transform: scale(0.98); }
+
+/* Stats grid */
+.steps-stats-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 8px; margin-bottom: 12px;
+}
+.steps-stat {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 12px 8px; text-align: center;
+}
+.steps-stat-val { font-size: 18px; font-weight: 700; color: var(--text); line-height: 1.2; }
+.steps-stat-lbl { font-size: 9px; color: var(--text3); margin-top: 3px; text-transform: uppercase; letter-spacing: 0.4px; }
+
+/* Bar chart */
+.steps-chart-label { font-size: 12px; color: var(--text3); margin-bottom: 10px; }
+.steps-chart {
+  display: flex; align-items: flex-end; gap: 3px;
+  height: 80px; margin-bottom: 8px;
+}
+.steps-bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; }
+.steps-bar-track { flex: 1; width: 100%; position: relative; display: flex; align-items: flex-end; }
+.steps-bar {
+  width: 100%; border-radius: 3px 3px 0 0;
+  background: var(--bg3); border: 1px solid var(--border);
+  transition: height 0.3s ease; min-height: 2px;
+}
+.steps-bar.met  { background: var(--green2); border-color: var(--green3); }
+.steps-bar.today { background: var(--green); border-color: var(--green); }
+.steps-goal-line {
+  position: absolute; left: 0; right: 0; height: 1px;
+  background: var(--border2); border-top: 1px dashed var(--border2);
+  pointer-events: none;
+}
+.steps-bar-label { font-size: 8px; color: var(--text3); white-space: nowrap; }
+.steps-bar-label.today { color: var(--green); font-weight: 700; }
+.steps-chart-legend {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 10px; color: var(--text3);
+}
+.legend-dot { width: 8px; height: 2px; border-radius: 1px; }
+.goal-dot { border-top: 1px dashed var(--border2); background: transparent; }
+
+/* Goal setting */
+.steps-section-title { font-size: 13px; font-weight: 700; color: var(--text2); margin-bottom: 10px; }
+.steps-goal-row { display: flex; gap: 8px; margin-bottom: 10px; }
+.steps-set-goal-btn {
+  background: var(--green2); color: var(--green); border: none;
+  border-radius: 8px; padding: 10px 16px; font-size: 13px; font-weight: 700;
+  cursor: pointer; font-family: inherit; white-space: nowrap;
+}
+.steps-goal-presets { display: flex; gap: 6px; }
+.steps-preset {
+  flex: 1; background: var(--bg3); border: 1.5px solid var(--border);
+  border-radius: 20px; color: var(--text3); font-size: 12px; font-weight: 600;
+  padding: 6px 4px; cursor: pointer; font-family: inherit; transition: all 0.15s;
+}
+.steps-preset.active { background: var(--green2); border-color: var(--green3); color: var(--green); }
+
+/* Past date entry */
+.steps-past-row { display: flex; gap: 8px; align-items: center; }
+
+/* History */
+.steps-history-list { display: flex; flex-direction: column; gap: 8px; }
+.steps-hist-row {
+  display: grid; grid-template-columns: 90px 1fr 58px 28px;
+  gap: 8px; align-items: center;
+}
+.steps-hist-date { font-size: 11px; color: var(--text3); }
+.steps-hist-bar-wrap { height: 6px; background: var(--bg3); border-radius: 3px; overflow: hidden; }
+.steps-hist-bar { height: 100%; border-radius: 3px; background: var(--border2); transition: width 0.3s; }
+.steps-hist-bar.met { background: var(--green2); }
+.steps-hist-val { font-size: 12px; color: var(--text2); text-align: right; font-variant-numeric: tabular-nums; }
+.steps-hist-val.met-text { color: var(--green); font-weight: 600; }
+.steps-hist-edit {
+  background: none; border: none; color: var(--text3); font-size: 13px;
+  cursor: pointer; padding: 2px; font-family: inherit;
+}
+
+/* Lynny theme */
+body.theme-lynny .steps-progress-fill     { background: #6a1a3a; }
+body.theme-lynny .steps-progress-fill.met { background: #fc7ab0; }
+body.theme-lynny .steps-log-btn           { background: #6a1a3a; color: #fc7ab0; }
+body.theme-lynny .steps-bar.met           { background: #6a1a3a; border-color: #9a2a5a; }
+body.theme-lynny .steps-bar.today         { background: #fc7ab0; border-color: #fc7ab0; }
+body.theme-lynny .steps-met-badge         { color: #fc7ab0; }
+body.theme-lynny .steps-preset.active     { background: #6a1a3a; border-color: #9a2a5a; color: #fc7ab0; }
+body.theme-lynny .steps-set-goal-btn      { background: #6a1a3a; color: #fc7ab0; }
+body.theme-lynny .steps-hist-bar.met      { background: #6a1a3a; }
+body.theme-lynny .steps-hist-val.met-text { color: #fc7ab0; }
