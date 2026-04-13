@@ -433,3 +433,149 @@ body {
 }
 body.theme-lynny .loading-spinner { border-top-color: #fc7ab0; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── SESSION NAV (back + save bar) ── */
+.session-nav {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 4px;
+}
+.back-btn {
+  display: flex; align-items: center; gap: 6px;
+  background: none; border: none; color: var(--text2);
+  font-size: 14px; cursor: pointer; padding: 6px 0;
+  font-family: inherit;
+}
+.back-btn:active { color: var(--text); }
+.save-session-btn {
+  display: flex; align-items: center; gap: 5px;
+  background: var(--green2); color: var(--green);
+  border: none; border-radius: 8px;
+  padding: 8px 14px; font-size: 13px; font-weight: 700;
+  cursor: pointer; font-family: inherit; transition: all 0.15s;
+}
+.save-session-btn:active { transform: scale(0.97); }
+
+/* ══ LOG SCREEN — SPREADSHEET STYLE ══ */
+
+/* Week strip */
+.week-strip-wrap {
+  position: sticky; top: 0; z-index: 20;
+  background: var(--bg); border-bottom: 1px solid var(--border);
+  margin: -16px -16px 14px; padding: 10px 16px;
+}
+.week-strip {
+  display: flex; gap: 6px;
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; padding-bottom: 2px;
+}
+.week-strip::-webkit-scrollbar { display: none; }
+.week-tab {
+  flex-shrink: 0;
+  background: var(--bg2); border: 1.5px solid var(--border);
+  border-radius: 20px; color: var(--text3);
+  font-size: 12px; font-weight: 600; padding: 6px 14px;
+  cursor: pointer; white-space: nowrap; transition: all 0.15s;
+  font-family: inherit;
+}
+.week-tab.active {
+  background: var(--green2); border-color: var(--green3);
+  color: var(--green);
+}
+.week-tab:active { transform: scale(0.95); }
+
+/* Day cards */
+.day-list { display: flex; flex-direction: column; gap: 8px; }
+.day-card {
+  background: var(--bg2); border: 1.5px solid var(--border);
+  border-radius: var(--radius); overflow: hidden;
+  transition: border-color 0.15s;
+}
+.day-card.open { border-color: var(--border2); }
+
+.day-card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px; cursor: pointer; gap: 10px;
+  user-select: none; -webkit-user-select: none;
+}
+.day-card-left { flex: 1; }
+.day-card-name { font-size: 15px; font-weight: 600; color: var(--text); }
+.day-card-meta { font-size: 11px; color: var(--text3); margin-top: 2px; }
+.day-card-right { display: flex; align-items: center; gap: 8px; }
+.day-chevron {
+  color: var(--text3); transition: transform 0.2s; flex-shrink: 0;
+}
+.day-card.open .day-chevron { transform: rotate(180deg); }
+
+/* Day body */
+.day-body { padding: 0 14px 14px; border-top: 1px solid var(--border); }
+
+/* Exercise block */
+.ex-block { margin-top: 14px; }
+.ex-block + .ex-block { border-top: 1px solid var(--border); padding-top: 14px; }
+.ex-block-header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  margin-bottom: 8px; gap: 8px;
+}
+.ex-block-name { font-size: 13px; font-weight: 600; color: var(--text); }
+.ex-block-meta { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+/* Log column headers */
+.log-col-heads {
+  display: grid; grid-template-columns: 24px 1fr 1fr 1fr 1fr;
+  gap: 4px; margin-bottom: 4px;
+}
+.lch {
+  font-size: 9px; color: var(--text3); text-align: center;
+  text-transform: uppercase; letter-spacing: 0.4px;
+}
+
+/* Log set rows */
+.log-set-row {
+  display: grid; grid-template-columns: 24px 1fr 1fr 1fr 1fr;
+  gap: 4px; margin-bottom: 5px; align-items: center;
+}
+.log-set-num { font-size: 11px; color: var(--text3); text-align: center; }
+.log-input {
+  background: var(--bg3); border: 1.5px solid var(--border);
+  border-radius: 6px; color: var(--text);
+  font-size: 14px; padding: 7px 3px; text-align: center;
+  width: 100%; font-family: inherit; transition: border-color 0.15s;
+  -webkit-appearance: none; appearance: none;
+}
+.log-input:focus { outline: none; border-color: var(--border2); }
+.log-input.done { border-color: var(--green2); background: #0a1a0d; color: var(--green); }
+.log-input::placeholder { color: var(--border2); font-size: 11px; }
+.log-e1rm {
+  font-size: 12px; color: var(--text2); text-align: center;
+  padding: 7px 3px; background: var(--bg3); border-radius: 6px;
+  border: 1px solid transparent;
+}
+
+.log-add-set {
+  background: none; border: 1.5px dashed var(--border);
+  border-radius: 6px; color: var(--text3); font-size: 12px;
+  padding: 6px; width: 100%; cursor: pointer; margin-top: 4px;
+  font-family: inherit; transition: all 0.15s;
+}
+.log-add-set:active { border-color: var(--border2); color: var(--text2); }
+
+.prev-compare {
+  font-size: 11px; color: var(--text3); margin-top: 6px; padding-top: 6px;
+  border-top: 1px solid var(--border);
+}
+.prev-compare strong { color: var(--text2); }
+
+.log-save-btn {
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  width: 100%; background: var(--green2); color: var(--green);
+  border: none; border-radius: 8px; padding: 12px;
+  font-size: 13px; font-weight: 700; cursor: pointer;
+  font-family: inherit; margin-top: 16px; transition: all 0.15s;
+}
+.log-save-btn:active { transform: scale(0.98); }
+
+/* Lynny theme overrides for log */
+body.theme-lynny .week-tab.active { background: #6a1a3a; border-color: #9a2a5a; color: #fc7ab0; }
+body.theme-lynny .day-card.open { border-color: #6a1a3a; }
+body.theme-lynny .log-input.done { border-color: #6a1a3a; background: #1a0812; color: #fc7ab0; }
+body.theme-lynny .log-save-btn { background: #6a1a3a; color: #fc7ab0; }

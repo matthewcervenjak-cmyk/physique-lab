@@ -1,4 +1,3 @@
-// ── SUPABASE CONFIG ──
 const SUPA_URL = 'https://tsepbubklqotddklxvwn.supabase.co';
 const SUPA_KEY = 'sb_publishable_tASOM-SBT9Yr1h-UOE8O7w_V520kPD5';
 
@@ -10,7 +9,6 @@ const PROFILES = {
 
 let CURRENT_PROFILE = null;
 
-// ── SUPABASE HELPERS ──
 const SB = {
   h() {
     return {
@@ -19,26 +17,22 @@ const SB = {
       'Authorization': 'Bearer ' + SUPA_KEY,
     };
   },
-
   async get(table, match) {
     try {
       const q = Object.entries(match).map(([k,v]) => `${k}=eq.${encodeURIComponent(v)}`).join('&');
       const r = await fetch(`${SUPA_URL}/rest/v1/${table}?${q}&limit=1`, { headers: this.h() });
       if (!r.ok) { console.warn('SB.get failed', table, r.status, await r.text()); return null; }
-      const d = await r.json();
-      return d.length > 0 ? d[0] : null;
-    } catch(e) { console.warn('SB.get error', table, e); return null; }
+      const d = await r.json(); return d.length > 0 ? d[0] : null;
+    } catch(e) { console.warn('SB.get error', e); return null; }
   },
-
   async getAll(table, match, order = 'created_at.desc') {
     try {
       const q = Object.entries(match).map(([k,v]) => `${k}=eq.${encodeURIComponent(v)}`).join('&');
       const r = await fetch(`${SUPA_URL}/rest/v1/${table}?${q}&order=${order}`, { headers: this.h() });
-      if (!r.ok) { console.warn('SB.getAll failed', table, r.status, await r.text()); return null; }
+      if (!r.ok) { console.warn('SB.getAll failed', table, r.status); return null; }
       return await r.json();
-    } catch(e) { console.warn('SB.getAll error', table, e); return null; }
+    } catch(e) { console.warn('SB.getAll error', e); return null; }
   },
-
   async upsert(table, data) {
     try {
       const r = await fetch(`${SUPA_URL}/rest/v1/${table}`, {
@@ -48,9 +42,8 @@ const SB = {
       });
       if (!r.ok) console.warn('SB.upsert failed', table, r.status, await r.text());
       return r.ok;
-    } catch(e) { console.warn('SB.upsert error', table, e); return false; }
+    } catch(e) { console.warn('SB.upsert error', e); return false; }
   },
-
   async insert(table, data) {
     try {
       const r = await fetch(`${SUPA_URL}/rest/v1/${table}`, {
@@ -60,9 +53,8 @@ const SB = {
       });
       if (!r.ok) console.warn('SB.insert failed', table, r.status, await r.text());
       return r.ok;
-    } catch(e) { console.warn('SB.insert error', table, e); return false; }
+    } catch(e) { console.warn('SB.insert error', e); return false; }
   },
-
   async delete(table, match) {
     try {
       const q = Object.entries(match).map(([k,v]) => `${k}=eq.${encodeURIComponent(v)}`).join('&');
@@ -72,7 +64,6 @@ const SB = {
   },
 };
 
-// ── LOCAL CACHE (always used for speed, Supabase is source of truth) ──
 const LOCAL = {
   k(key) { return `mpl_${CURRENT_PROFILE}_${key}`; },
   set(key, val) { try { localStorage.setItem(this.k(key), JSON.stringify(val)); } catch(e) {} },
@@ -83,7 +74,6 @@ const LOCAL = {
   del(key) { try { localStorage.removeItem(this.k(key)); } catch(e) {} },
 };
 
-// ── DEFAULT PROGRAMME ──
 const DEFAULT_PROGRAMME = [
   { id:'day1', label:'Day 1 — Upper A', type:'upper', exercises:[
     { id:'flat_db_press',    name:'Flat DB Chest Press',          sets:3, reps:'8–10',  rir:'1.5–2', rest:240 },
@@ -131,7 +121,6 @@ const DEFAULT_PROGRAMME = [
   ]},
 ];
 
-// ── DB — hybrid local+supabase ──
 const DB = {
 
   // ── PROGRAMME ──
@@ -147,191 +136,248 @@ const DB = {
     SB.upsert('programme', { profile: CURRENT_PROFILE, data, updated_at: new Date().toISOString() });
   },
 
-  // ── SESSIONS — always use local cache as source of truth ──
-  getSessions() {
-    // Synchronous — reads from local cache which is populated at login sync
-    return LOCAL.get('sessions', []);
+  // ── SESSION KEY: unique per profile+week+day ──
+  // Each week/day combo is its own permanent editable session
+  _sessionKey(week, dayId) { return `w${week}_${dayId}`; },
+
+  // Sync version — used by Log screen (programme already loaded)
+  getWeekDaySessionSync(week, dayId, programme) {
+    const key = this._sessionKey(week, dayId);
+    const allSessions = LOCAL.get('sessions', []);
+    const existing = allSessions.find(s => s.weekDayKey === key);
+    if (existing) return existing;
+
+    // Create blank pre-populated from previous week
+    const prevSessions = allSessions
+      .filter(s => s.dayId === dayId && s.week < week && s.saved)
+      .sort((a, b) => b.week - a.week);
+    const prevSession = prevSessions[0] || null;
+    const day = programme.find(d => d.id === dayId);
+    if (!day) return null;
+
+    const exercises = day.exercises.map(ex => {
+      const prevEx = prevSession ? (prevSession.exercises||[]).find(e=>e.id===ex.id) : null;
+      const prevSets = prevEx ? (prevEx.sets||[]) : [];
+      return {
+        id: ex.id, name: ex.name, targetSets: ex.sets,
+        reps: ex.reps, rest: ex.rest, rir: ex.rir,
+        sets: Array.from({ length: ex.sets }, (_, i) => ({
+          load: prevSets[i]?.load || '',
+          reps: prevSets[i]?.reps || '',
+          rir:  prevSets[i]?.rir  || '',
+          done: false,
+        }))
+      };
+    });
+
+    return {
+      id:         `${CURRENT_PROFILE}_${key}`,
+      weekDayKey: key,
+      dayId,
+      dayLabel:   day.label,
+      date:       this.todayISO(),
+      week,
+      exercises,
+      saved: false,
+    };
   },
 
-  async saveSession(session) {
-    // 1. Save to local immediately so UI updates instantly
+  // Get week+day session (async, checks cache first)
+  async getWeekDaySession(week, dayId) {
+    const key = this._sessionKey(week, dayId);
+    // Check local cache first
+    const allSessions = LOCAL.get('sessions', []);
+    const existing = allSessions.find(s => s.weekDayKey === key);
+    if (existing) return existing;
+    return null; // doesn't exist yet
+  },
+
+  // Get or create an editable session for week+day, pre-populating from last week
+  async getOrCreateSession(week, dayId, programme) {
+    const existing = await this.getWeekDaySession(week, dayId);
+    if (existing) return existing;
+
+    // Create new — pre-populate from the most recent session for this dayId
+    const allSessions = LOCAL.get('sessions', []);
+    const prevSessions = allSessions
+      .filter(s => s.dayId === dayId && s.week < week)
+      .sort((a, b) => b.week - a.week);
+    const prevSession = prevSessions[0] || null;
+
+    const day = programme.find(d => d.id === dayId);
+    if (!day) return null;
+
+    const exercises = day.exercises.map(ex => {
+      const prevEx = prevSession ? (prevSession.exercises || []).find(e => e.id === ex.id) : null;
+      const prevSets = prevEx ? (prevEx.sets || []) : [];
+      return {
+        id: ex.id, name: ex.name, targetSets: ex.sets,
+        reps: ex.reps, rest: ex.rest, rir: ex.rir,
+        sets: Array.from({ length: ex.sets }, (_, i) => ({
+          load: prevSets[i] ? (prevSets[i].load || '') : '',
+          reps: prevSets[i] ? (prevSets[i].reps || '') : '',
+          rir:  prevSets[i] ? (prevSets[i].rir  || '') : '',
+          done: false,
+        }))
+      };
+    });
+
+    const session = {
+      id:         `${CURRENT_PROFILE}_${this._sessionKey(week, dayId)}`,
+      weekDayKey: this._sessionKey(week, dayId),
+      dayId,
+      dayLabel:   day.label,
+      date:       this.todayISO(),
+      week,
+      exercises,
+      saved:      false,
+    };
+    return session;
+  },
+
+  // Save a week+day session (upsert by weekDayKey)
+  async saveWeekDaySession(session) {
     const sessions = LOCAL.get('sessions', []);
-    const idx = sessions.findIndex(s => s.id === session.id);
+    const idx = sessions.findIndex(s => s.weekDayKey === session.weekDayKey);
     if (idx >= 0) sessions[idx] = session; else sessions.unshift(session);
     LOCAL.set('sessions', sessions);
 
-    // 2. Push to Supabase in background
+    // Push to Supabase
     SB.upsert('sessions', {
-      id:        session.id,
-      profile:   CURRENT_PROFILE,
-      day_id:    session.dayId,
-      day_label: session.dayLabel,
-      date:      session.date,
-      week:      session.week,
-      started:   session.started,
-      finished:  session.finished,
-      exercises: session.exercises,
+      id:          session.id,
+      profile:     CURRENT_PROFILE,
+      day_id:      session.dayId,
+      day_label:   session.dayLabel,
+      date:        session.date,
+      week:        session.week,
+      started:     session.started || null,
+      finished:    session.finished || null,
+      exercises:   session.exercises,
     });
   },
 
-  getSession(id) {
-    return this.getSessions().find(s => s.id === id) || null;
-  },
-
-  // ── ACTIVE WORKOUT — local only (fast, short-lived) ──
-  getActive() {
-    return LOCAL.get('active', null);
-  },
-  async saveActive(data) {
-    LOCAL.set('active', data);
-    SB.upsert('active_workout', { profile: CURRENT_PROFILE, data, updated_at: new Date().toISOString() });
-  },
-  async clearActive() {
-    LOCAL.del('active');
-    SB.delete('active_workout', { profile: CURRENT_PROFILE });
-  },
+  // Legacy — keep for history screen
+  getSessions() { return LOCAL.get('sessions', []); },
+  getSession(id) { return this.getSessions().find(s => s.id === id) || null; },
 
   // ── CURRENT WEEK ──
-  getCurrentWeek() {
-    return LOCAL.get('currentWeek', 1);
-  },
+  getCurrentWeek() { return LOCAL.get('currentWeek', 1); },
   async setCurrentWeek(w) {
     LOCAL.set('currentWeek', w);
     SB.upsert('current_week', { profile: CURRENT_PROFILE, week: w, updated_at: new Date().toISOString() });
   },
 
   // ── REHAB ──
-  getRehabExercises() {
-    return LOCAL.get('rehab_exercises', []);
-  },
+  getRehabExercises() { return LOCAL.get('rehab_exercises', []); },
   async saveRehabExercises(list) {
     LOCAL.set('rehab_exercises', list);
     SB.upsert('rehab_exercises', { profile: CURRENT_PROFILE, exercises: list, updated_at: new Date().toISOString() });
   },
-  getRehabSessions() {
-    return LOCAL.get('rehab_sessions', []);
-  },
+  getRehabSessions() { return LOCAL.get('rehab_sessions', []); },
   async saveRehabSession(session) {
     const list = LOCAL.get('rehab_sessions', []);
     list.unshift(session);
     LOCAL.set('rehab_sessions', list.slice(0, 100));
     SB.insert('rehab_sessions', {
-      id:            session.id,
-      profile:       CURRENT_PROFILE,
-      date:          session.date,
-      exercise_id:   session.exerciseId,
-      exercise_name: session.exerciseName,
-      sets:          session.sets,
-      note:          session.note || null,
+      id: session.id, profile: CURRENT_PROFILE,
+      date: session.date, exercise_id: session.exerciseId,
+      exercise_name: session.exerciseName, sets: session.sets,
+      note: session.note || null,
     });
   },
 
-  // ── SYNC: pull everything from Supabase into local cache at login ──
+  // ── SYNC ──
   async syncFromCloud() {
-    console.log('Syncing from Supabase for profile:', CURRENT_PROFILE);
+    console.log('Syncing for profile:', CURRENT_PROFILE);
     try {
-      // Programme
       const prog = await SB.get('programme', { profile: CURRENT_PROFILE });
-      if (prog?.data) { LOCAL.set('programme', prog.data); console.log('✓ programme synced'); }
+      if (prog?.data) { LOCAL.set('programme', prog.data); }
 
-      // Sessions — map DB column names back to app field names
       const rows = await SB.getAll('sessions', { profile: CURRENT_PROFILE }, 'created_at.desc');
       if (rows && rows.length > 0) {
         const sessions = rows.map(r => ({
-          id:       r.id,
-          dayId:    r.day_id,
-          dayLabel: r.day_label,
-          date:     r.date,
-          week:     r.week,
-          started:  r.started,
-          finished: r.finished,
-          exercises: r.exercises,
+          id:          r.id,
+          weekDayKey:  r.id.includes('_w') ? r.id.split(`${CURRENT_PROFILE}_`)[1] : `w${r.week}_${r.day_id}`,
+          dayId:       r.day_id,
+          dayLabel:    r.day_label,
+          date:        r.date,
+          week:        r.week,
+          started:     r.started,
+          finished:    r.finished,
+          exercises:   r.exercises,
+          saved:       true,
         }));
         LOCAL.set('sessions', sessions);
         console.log('✓ sessions synced:', sessions.length);
-      } else {
-        console.log('No sessions in Supabase yet');
       }
 
-      // Current week
       const wk = await SB.get('current_week', { profile: CURRENT_PROFILE });
-      if (wk) { LOCAL.set('currentWeek', wk.week); console.log('✓ week synced:', wk.week); }
+      if (wk) LOCAL.set('currentWeek', wk.week);
 
-      // Active workout
-      const active = await SB.get('active_workout', { profile: CURRENT_PROFILE });
-      if (active?.data) { LOCAL.set('active', active.data); console.log('✓ active workout synced'); }
-      else { LOCAL.del('active'); }
-
-      // Rehab exercises
       const rehab = await SB.get('rehab_exercises', { profile: CURRENT_PROFILE });
-      if (rehab?.exercises) { LOCAL.set('rehab_exercises', rehab.exercises); console.log('✓ rehab exercises synced'); }
+      if (rehab?.exercises) LOCAL.set('rehab_exercises', rehab.exercises);
 
-      // Rehab sessions
       const rehabRows = await SB.getAll('rehab_sessions', { profile: CURRENT_PROFILE }, 'created_at.desc');
-      if (rehabRows && rehabRows.length > 0) {
-        const rehabSessions = rehabRows.map(r => ({
-          id:           r.id,
-          date:         r.date,
-          exerciseId:   r.exercise_id,
-          exerciseName: r.exercise_name,
-          sets:         r.sets,
-          note:         r.note,
-        }));
-        LOCAL.set('rehab_sessions', rehabSessions);
-        console.log('✓ rehab sessions synced:', rehabSessions.length);
+      if (rehabRows?.length > 0) {
+        LOCAL.set('rehab_sessions', rehabRows.map(r => ({
+          id: r.id, date: r.date, exerciseId: r.exercise_id,
+          exerciseName: r.exercise_name, sets: r.sets, note: r.note,
+        })));
       }
-
       console.log('Sync complete');
-    } catch(e) {
-      console.error('Sync error:', e);
-    }
+    } catch(e) { console.error('Sync error:', e); }
   },
 
-  // ── CALCULATIONS (synchronous, use local cache) ──
+  // ── CALCULATIONS ──
   calcE1RM(load, reps) {
     if (!load || !reps || reps <= 0) return 0;
     if (reps === 1) return load;
     return Math.round((load * (1 + reps / 30)) * 10) / 10;
   },
 
-  getLastSession(dayId, exerciseId) {
+  // For progression comparison — find the most recent saved session for a dayId BEFORE the current week
+  getLastSavedSession(week, dayId) {
     const sessions = this.getSessions();
-    const past = sessions.filter(s => s.dayId === dayId);
-    if (!past.length) return null;
-    return (past[0].exercises || []).find(e => e.id === exerciseId) || null;
+    return sessions
+      .filter(s => s.dayId === dayId && s.week < week && s.saved)
+      .sort((a, b) => b.week - a.week)[0] || null;
   },
 
   getE1RMHistory(exerciseId) {
-    return this.getSessions().slice().reverse().reduce((hist, s) => {
-      const ex = (s.exercises || []).find(e => e.id === exerciseId);
-      if (!ex) return hist;
-      const sets = (ex.sets || []).filter(set => set.load && set.reps);
-      if (!sets.length) return hist;
-      const maxE1RM = Math.max(...sets.map(set => this.calcE1RM(parseFloat(set.load), parseInt(set.reps))));
-      if (maxE1RM > 0) hist.push({ date: s.date, week: s.week, e1rm: maxE1RM });
-      return hist;
-    }, []);
+    return this.getSessions()
+      .filter(s => s.saved)
+      .slice().reverse()
+      .reduce((hist, s) => {
+        const ex = (s.exercises || []).find(e => e.id === exerciseId);
+        if (!ex) return hist;
+        const sets = (ex.sets || []).filter(set => set.load && set.reps);
+        if (!sets.length) return hist;
+        const maxE1RM = Math.max(...sets.map(set => this.calcE1RM(parseFloat(set.load), parseInt(set.reps))));
+        if (maxE1RM > 0) hist.push({ date: s.date, week: s.week, e1rm: maxE1RM });
+        return hist;
+      }, []);
   },
 
-  getProgressionStatus(dayId, exerciseId, currentSets) {
-    const last = this.getLastSession(dayId, exerciseId);
+  getProgressionStatus(week, dayId, exerciseId, currentSets) {
+    const last = this.getLastSavedSession(week, dayId);
     if (!last) return 'new';
-    const lastSets = (last.sets || []).filter(s => s.load && s.reps);
+    const lastEx = (last.exercises || []).find(e => e.id === exerciseId);
+    if (!lastEx) return 'new';
+    const lastSets = (lastEx.sets || []).filter(s => s.load && s.reps);
     if (!lastSets.length) return 'new';
     const lastMaxE = Math.max(...lastSets.map(s => this.calcE1RM(parseFloat(s.load), parseInt(s.reps))));
     const curSets = (currentSets || []).filter(s => s.load && s.reps);
     if (!curSets.length) return null;
     const curMaxE = Math.max(...curSets.map(s => this.calcE1RM(parseFloat(s.load), parseInt(s.reps))));
     if (curMaxE > lastMaxE * 1.005) return 'pr';
-    if (curMaxE < lastMaxE * 0.99) return 'down';
+    if (curMaxE < lastMaxE * 0.99)  return 'down';
     return 'same';
   },
 
   getDeloadAnalysis() {
     const programme = LOCAL.get('programme', DEFAULT_PROGRAMME);
     const allExercises = programme.flatMap(d => d.exercises);
-    const stalled = [];
-    let totalPrimary = 0, stalledCount = 0;
+    const stalled = []; let totalPrimary = 0, stalledCount = 0;
     for (const ex of allExercises) {
       const hist = this.getE1RMHistory(ex.id);
       if (hist.length < 2) continue;
@@ -340,7 +386,7 @@ const DB = {
       const isStalled = recent.length >= 2 && recent.every(h => Math.abs(h.e1rm - recent[0].e1rm) / recent[0].e1rm < 0.02);
       if (isStalled) { stalledCount++; stalled.push({ name: ex.name, weeks: recent.length, e1rm: recent[recent.length-1].e1rm }); }
     }
-    const sessions = this.getSessions();
+    const sessions = this.getSessions().filter(s => s.saved);
     const avgRIR = sessions.slice(0,12).flatMap(s => s.exercises||[]).flatMap(e => e.sets||[])
       .filter(s => s.rir !== '' && s.rir !== undefined).map(s => parseFloat(s.rir)).filter(v => !isNaN(v));
     const meanRIR = avgRIR.length > 0 ? avgRIR.reduce((a,b)=>a+b,0)/avgRIR.length : 2;
@@ -351,15 +397,9 @@ const DB = {
     ));
     const stallPct = totalPrimary > 0 ? stalledCount / totalPrimary : 0;
     let status = 'good', recommendation = '';
-    if (fatigueScore >= 70 || stallPct >= 0.6) {
-      status = 'deload';
-      recommendation = 'Deload recommended. Reduce all loads by 40%, reduce volume by 40%, maintain movement patterns for 1 week.';
-    } else if (fatigueScore >= 40 || stalled.length >= 2) {
-      status = 'monitor';
-      recommendation = 'Some stalls detected. Consider a technique reset on flagged exercises before triggering a full deload.';
-    } else {
-      recommendation = 'Progress is on track. Continue current program. Reassess after next 2 sessions.';
-    }
+    if (fatigueScore >= 70 || stallPct >= 0.6) { status = 'deload'; recommendation = 'Deload recommended. Reduce all loads by 40%, reduce volume by 40%, maintain movement patterns for 1 week.'; }
+    else if (fatigueScore >= 40 || stalled.length >= 2) { status = 'monitor'; recommendation = 'Some stalls detected. Consider a technique reset on flagged exercises before triggering a full deload.'; }
+    else { recommendation = 'Progress is on track. Continue current program. Reassess after next 2 sessions.'; }
     return { fatigueScore, stalled, status, recommendation, totalPrimary, stalledCount };
   },
 
@@ -367,33 +407,16 @@ const DB = {
     const el = document.getElementById('sync-test-result');
     if (el) el.textContent = 'Testing...';
     const results = [];
-    // Test 1: basic fetch to Supabase
     try {
       const r = await fetch(`${SUPA_URL}/rest/v1/sessions?limit=1&profile=eq.${CURRENT_PROFILE}`, { headers: SB.h() });
       const text = await r.text();
       results.push(`Status: ${r.status}`);
       results.push(`Response: ${text.slice(0, 200)}`);
-    } catch(e) {
-      results.push(`Fetch error: ${e.message}`);
-    }
-    // Test 2: try insert
-    try {
-      const r2 = await fetch(`${SUPA_URL}/rest/v1/current_week`, {
-        method: 'POST',
-        headers: { ...SB.h(), 'Prefer': 'resolution=merge-duplicates,return=minimal' },
-        body: JSON.stringify({ profile: CURRENT_PROFILE, week: DB.getCurrentWeek(), updated_at: new Date().toISOString() }),
-      });
-      results.push(`Upsert status: ${r2.status}`);
-      if (!r2.ok) results.push(`Upsert error: ${await r2.text()}`);
-    } catch(e) {
-      results.push(`Upsert error: ${e.message}`);
-    }
+    } catch(e) { results.push(`Fetch error: ${e.message}`); }
     if (el) el.innerHTML = results.map(r => `<div>${r}</div>`).join('');
   },
 
-  formatDate(iso) {
-    return new Date(iso).toLocaleDateString('en-AU', { weekday:'short', day:'numeric', month:'short' });
-  },
+  formatDate(iso) { return new Date(iso).toLocaleDateString('en-AU', { weekday:'short', day:'numeric', month:'short' }); },
   todayISO() { return new Date().toISOString().split('T')[0]; },
   newId()    { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); },
 };

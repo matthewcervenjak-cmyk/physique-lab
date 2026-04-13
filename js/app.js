@@ -1,4 +1,3 @@
-// ── AUTH ──
 const Auth = {
   _pending: null,
 
@@ -41,13 +40,8 @@ const Auth = {
     document.getElementById('header-profile-name').textContent = profile.label + "'s Physique Lab";
     document.querySelector('.nav-btn-rehab').classList.toggle('hidden', !profile.hasRehab);
     document.getElementById('app').classList.remove('hidden');
-
-    // Show syncing indicator
-    App.toast('Syncing data...');
-
-    // Pull fresh data from Supabase into local cache
+    App.toast('Syncing...');
     await DB.syncFromCloud();
-
     App._boot();
   },
 
@@ -62,20 +56,20 @@ const Auth = {
     document.body.className = '';
     document.getElementById('app').classList.add('hidden');
     document.getElementById('landing').classList.remove('hidden');
-    document.querySelectorAll('.screen').forEach(s => { s.innerHTML = ''; s.classList.remove('active'); });
-    document.getElementById('screen-today').classList.add('active');
+    document.querySelectorAll('.screen').forEach(s => { s.innerHTML=''; s.classList.remove('active'); });
+    document.getElementById('screen-log').classList.add('active');
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-    document.querySelector('[data-screen="today"]').classList.add('active');
+    document.querySelector('[data-screen="log"]').classList.add('active');
     App._navListenersAttached = false;
+    Log._sessions = {};
+    Log._openDayId = null;
   },
 };
 
-// ── APP ──
 const App = {
   _navListenersAttached: false,
 
   _domReady() {
-    // Particles
     const pc = document.getElementById('particles');
     if (pc) {
       for (let i = 0; i < 28; i++) {
@@ -98,11 +92,11 @@ const App = {
       });
       this._navListenersAttached = true;
     }
-    document.querySelectorAll('.screen').forEach(s => { s.innerHTML = ''; s.classList.remove('active'); });
+    document.querySelectorAll('.screen').forEach(s => { s.innerHTML=''; s.classList.remove('active'); });
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-    document.getElementById('screen-today').classList.add('active');
-    document.querySelector('[data-screen="today"]').classList.add('active');
-    this._renderScreen('today');
+    document.getElementById('screen-log').classList.add('active');
+    document.querySelector('[data-screen="log"]').classList.add('active');
+    this._renderScreen('log');
   },
 
   navigate(screenId) {
@@ -118,13 +112,7 @@ const App = {
 
   _renderScreen(screenId) {
     const hr = document.getElementById('header-right');
-    if (screenId === 'today') {
-      const week = DB.getCurrentWeek();
-      hr.innerHTML = `<button class="header-btn" onclick="Screens.changeWeek()">
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 4h10M4 2v2M10 2v2M2 5v6a1 1 0 001 1h8a1 1 0 001-1V5H2z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
-        Week ${week}
-      </button>`;
-    } else if (screenId === 'programme') {
+    if (screenId === 'programme') {
       hr.innerHTML = `<button class="header-btn" onclick="Screens.addDay()">+ Day</button>`;
     } else {
       hr.innerHTML = `<button class="header-btn" onclick="Auth.logout()">
@@ -132,10 +120,9 @@ const App = {
         Switch
       </button>`;
     }
-    if (screenId === 'today')     Screens.renderToday();
+    if (screenId === 'log')       Log.render();
     if (screenId === 'progress')  Screens.renderProgress();
     if (screenId === 'deload')    Screens.renderDeload();
-    if (screenId === 'history')   Screens.renderHistory();
     if (screenId === 'programme') Screens.renderProgramme();
     if (screenId === 'rehab')     Rehab.renderRehab();
   },
