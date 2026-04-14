@@ -204,6 +204,13 @@ const DB = {
     };
   },
 
+  // Delete a week+day session from local storage and Supabase
+  async deleteWeekDaySession(session) {
+    const sessions = LOCAL.get('sessions', []);
+    LOCAL.set('sessions', sessions.filter(s => s.weekDayKey !== session.weekDayKey));
+    SB.delete('sessions', { id: session.id });
+  },
+
   // Save a week+day session (upsert by weekDayKey)
   async saveWeekDaySession(session) {
     const sessions = LOCAL.get('sessions', []);

@@ -576,6 +576,14 @@ body.theme-lynny .loading-spinner { border-top-color: #fc7ab0; }
 }
 .log-save-btn:active { transform: scale(0.98); }
 
+.log-clear-btn {
+  display: block; width: 100%; background: transparent; color: var(--red);
+  border: 1px solid #5a1a1a; border-radius: 8px; padding: 10px;
+  font-size: 12px; font-weight: 600; cursor: pointer;
+  font-family: inherit; margin-top: 8px; transition: all 0.15s;
+}
+.log-clear-btn:active { transform: scale(0.98); background: #1a0808; }
+
 /* Lynny theme overrides for log */
 body.theme-lynny .week-tab.active { background: #6a1a3a; border-color: #9a2a5a; color: #fc7ab0; }
 body.theme-lynny .day-card.open { border-color: #6a1a3a; }

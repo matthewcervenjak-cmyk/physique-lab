@@ -124,6 +124,7 @@ const Log = {
         <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M1.5 7L4.5 10L11.5 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         Save Week ${week} · ${day.label}
       </button>
+      <button class="log-clear-btn" onclick="Log.clearSession('${day.id}')">Clear session</button>
     </div>`;
 
     return html;
@@ -262,31 +263,72 @@ const Log = {
     block.insertBefore(addBtn, refEl || null);
   },
 
+  _hasData(session) {
+    return (session.exercises || []).some(ex =>
+      (ex.sets || []).some(s => s.load && s.reps)
+    );
+  },
+
   async _autoSave(dayId) {
     const key = `w${this._currentWeek}_${dayId}`;
     const session = this._sessions[key];
     if (!session) return;
-    session.saved = true;
-    await DB.saveWeekDaySession(session);
+    if (this._hasData(session)) {
+      session.saved = true;
+      await DB.saveWeekDaySession(session);
+    } else {
+      session.saved = false;
+      await DB.deleteWeekDaySession(session);
+    }
     // Update the day card badge silently
     const card = document.getElementById('daycard-' + dayId);
     if (card) {
       const loggedSets = session.exercises.flatMap(e=>e.sets||[]).filter(s=>s.load&&s.reps).length;
       const badge = card.querySelector('.day-card-right .badge');
-      if (badge && loggedSets > 0) { badge.className='badge badge-pr'; badge.textContent=loggedSets; }
+      if (badge) {
+        if (loggedSets > 0) { badge.className='badge badge-pr'; badge.textContent=loggedSets; }
+        else { badge.className='badge badge-same'; badge.textContent='—'; }
+      }
     }
+    Screens.renderProgress();
+    Screens.renderDeload();
   },
 
   async saveSession(dayId) {
     const key = `w${this._currentWeek}_${dayId}`;
     const session = this._sessions[key];
     if (!session) return;
-    session.saved = true;
-    session.finished = Date.now();
-    await DB.saveWeekDaySession(session);
-    App.toast('Saved · W'+this._currentWeek+' '+session.dayLabel);
+    if (this._hasData(session)) {
+      session.saved = true;
+      session.finished = Date.now();
+      await DB.saveWeekDaySession(session);
+      App.toast('Saved · W'+this._currentWeek+' '+session.dayLabel);
+    } else {
+      session.saved = false;
+      await DB.deleteWeekDaySession(session);
+      App.toast('Cleared · W'+this._currentWeek+' '+session.dayLabel);
+    }
     Screens.renderProgress();
     Screens.renderDeload();
+  },
+
+  async clearSession(dayId) {
+    if (!confirm('Clear all logged data for this session?')) return;
+    const key = `w${this._currentWeek}_${dayId}`;
+    const session = this._sessions[key];
+    if (!session) return;
+    for (const ex of session.exercises) {
+      for (const set of ex.sets) {
+        set.load = ''; set.reps = ''; set.rir = ''; set.done = false;
+      }
+    }
+    session.saved = false;
+    await DB.deleteWeekDaySession(session);
+    const dayList = document.getElementById('day-list');
+    if (dayList) dayList.innerHTML = this._renderDayList(this._currentWeek);
+    Screens.renderProgress();
+    Screens.renderDeload();
+    App.toast('Session cleared');
   },
 
   _getPrevSession(week, dayId) {
