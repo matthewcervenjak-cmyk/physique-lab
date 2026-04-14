@@ -211,12 +211,18 @@ const Screens = {
     container.innerHTML = `<div class="loading-state"><div class="loading-spinner"></div></div>`;
     const programme = await DB.getProgramme();
 
-    let html = `<div class="section-header"><div><div class="section-title">Program</div><div class="section-sub">Tap exercise to edit</div></div></div>`;
+    let html = `<div class="section-header"><div><div class="section-title">Program</div><div class="section-sub">Tap exercise to edit · Use + Day to add</div></div></div>`;
     for (const day of programme) {
       html += `
         <div class="card">
           <div class="programme-day">
-            <div class="prog-day-header">${day.label}<button class="edit-btn" onclick="Screens.editDayName('${day.id}')">Rename</button></div>
+            <div class="prog-day-header">
+              <span>${day.label}</span>
+              <div style="display:flex;gap:6px">
+                <button class="edit-btn" onclick="Screens.editDayName('${day.id}')">Rename</button>
+                <button class="edit-btn" style="color:var(--red);border-color:#5a1a1a" onclick="Screens.deleteDay('${day.id}')">Delete</button>
+              </div>
+            </div>
             <div class="prog-exercise-list">
               ${day.exercises.map(ex=>`
                 <div class="prog-ex-row" onclick="Screens.editExercise('${day.id}','${ex.id}')">
@@ -328,6 +334,27 @@ const Screens = {
     programme.push({ id: DB.newId(), label, type:'upper', exercises:[] });
     await DB.saveProgramme(programme);
     App.closeModal(); this.renderProgramme(); App.toast('Day added');
+  },
+
+  async deleteDay(dayId) {
+    const programme = await DB.getProgramme();
+    const day = programme.find(d => d.id === dayId);
+    if (!day) return;
+    App.showModal(`Delete ${day.label}?`, `
+      <div class="rec-text" style="margin-bottom:16px;line-height:1.6">This will remove the day and all its exercises from your program. Logged session data is kept.</div>
+      <button class="btn-primary" style="background:#5a1a1a;color:var(--red);border:1px solid #7a2a2a" onclick="Screens._confirmDeleteDay('${dayId}')">Delete Day</button>
+      <button class="btn-secondary" onclick="App.closeModal()">Cancel</button>`);
+  },
+
+  async _confirmDeleteDay(dayId) {
+    const programme = await DB.getProgramme();
+    const updated = programme.filter(d => d.id !== dayId);
+    await DB.saveProgramme(updated);
+    App.closeModal();
+    this.renderProgramme();
+    Log._sessions = {};
+    if (document.getElementById('screen-log').classList.contains('active')) Log.render();
+    App.toast('Day deleted');
   },
 
   async changeWeek() {

@@ -1,12 +1,12 @@
-const CACHE = 'mpl-v24';
+const CACHE = 'mpl-v25';
 const ASSETS = [
   '/', '/index.html',
-  '/css/app.css?v=24', '/css/themes.css?v=24',
-  '/js/data.js?v=24', '/js/log.js?v=24', '/js/screens.js?v=24',
-  '/js/rehab.js?v=24', '/js/app.js?v=24',
+  '/css/app.css?v=25', '/css/themes.css?v=25',
+  '/js/data.js?v=25', '/js/log.js?v=25', '/js/screens.js?v=25',
+  '/js/rehab.js?v=25', '/js/app.js?v=25',
   '/manifest.json', '/icons/logo.png', '/icons/jarjar.png',
   '/icons/icon-192.png',
-  '/js/steps.js?v=24', '/icons/icon-512.png',
+  '/js/steps.js?v=25', '/icons/icon-512.png',
 ];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
