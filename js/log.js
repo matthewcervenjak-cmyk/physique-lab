@@ -114,7 +114,6 @@ const Log = {
             <div class="lch">e1RM</div>
           </div>
           ${ex.sets.map((set,i) => this._renderSetRow(day.id, ex.id, ex, set, i, prevSets)).join('')}
-          <button class="log-add-set" onclick="Log.addSet('${day.id}','${ex.id}')">+ set</button>
           ${prevBest ? `<div class="prev-compare">W${prevWeekNum} best e1RM: <strong>${prevBest}kg</strong> &nbsp;·&nbsp; grey = last saved</div>` : '<div class="prev-compare" style="color:var(--text3)">No prior data — enter your numbers</div>'}
         </div>`;
     }
@@ -230,38 +229,6 @@ const Log = {
     if (curBest > prevBest*1.005)      { badge.className='badge badge-pr'; badge.textContent='↑ PR'; }
     else if (curBest < prevBest*0.99)  { badge.className='badge badge-down'; badge.textContent='↓'; }
     else                                { badge.className='badge badge-same'; badge.textContent='→'; }
-  },
-
-  addSet(dayId, exId) {
-    const key = `w${this._currentWeek}_${dayId}`;
-    const session = this._sessions[key];
-    if (!session) return;
-    const ex = session.exercises.find(e=>e.id===exId);
-    if (!ex) return;
-    ex.sets.push({ load:'', reps:'', rir:'', done:false });
-    // Re-render the set list within this exercise block
-    const block = document.getElementById(`exblock-${dayId}-${exId}`);
-    if (!block) return;
-    const prevSession = this._getPrevSession(this._currentWeek, dayId);
-    const prevEx = prevSession ? (prevSession.exercises||[]).find(e=>e.id===exId) : null;
-    const prevSets = prevEx ? (prevEx.sets||[]).filter(s=>s.load&&s.reps) : [];
-    // Replace rows + add-set button
-    const rows = block.querySelectorAll('.log-set-row, .log-add-set');
-    rows.forEach(r => r.remove());
-    const refEl = block.querySelector('.prev-compare') || block.querySelector('.log-save-btn');
-    ex.sets.forEach((set,i) => {
-      const div = document.createElement('div');
-      div.outerHTML; // trick
-      const tmp = document.createElement('template');
-      tmp.innerHTML = this._renderSetRow(dayId, exId, ex, set, i, prevSets);
-      block.insertBefore(tmp.content.firstChild, refEl || null);
-    });
-    // Re-insert add-set button
-    const addBtn = document.createElement('button');
-    addBtn.className = 'log-add-set';
-    addBtn.textContent = '+ set';
-    addBtn.onclick = () => Log.addSet(dayId, exId);
-    block.insertBefore(addBtn, refEl || null);
   },
 
   _hasData(session) {
