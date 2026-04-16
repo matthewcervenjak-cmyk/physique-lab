@@ -145,7 +145,27 @@ const DB = {
     const key = this._sessionKey(week, dayId);
     const allSessions = LOCAL.get('sessions', []);
     const existing = allSessions.find(s => s.weekDayKey === key);
-    if (existing) return existing;
+    if (existing) {
+      // Reconcile each exercise's set count against the current programme
+      const day = programme.find(d => d.id === dayId);
+      if (day) {
+        for (const ex of existing.exercises) {
+          const progEx = day.exercises.find(e => e.id === ex.id);
+          if (!progEx) continue;
+          ex.targetSets = progEx.sets;
+          ex.reps = progEx.reps;
+          ex.setReps = progEx.setReps || null;
+          if (ex.sets.length > progEx.sets) {
+            ex.sets = ex.sets.slice(0, progEx.sets);
+          } else {
+            while (ex.sets.length < progEx.sets) {
+              ex.sets.push({ load: '', reps: '', rir: '', done: false });
+            }
+          }
+        }
+      }
+      return existing;
+    }
 
     // Create a blank session — no values copied forward, placeholders handled in UI
     const day = programme.find(d => d.id === dayId);
