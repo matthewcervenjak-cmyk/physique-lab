@@ -521,7 +521,7 @@ body.theme-lynny .loading-spinner { border-top-color: #fc7ab0; }
 
 /* Log column headers */
 .log-col-heads {
-  display: grid; grid-template-columns: 24px 1fr 1fr 1fr 1fr;
+  display: grid; grid-template-columns: 32px 1fr 1fr 1fr 1fr;
   gap: 4px; margin-bottom: 4px;
 }
 .lch {
@@ -531,10 +531,11 @@ body.theme-lynny .loading-spinner { border-top-color: #fc7ab0; }
 
 /* Log set rows */
 .log-set-row {
-  display: grid; grid-template-columns: 24px 1fr 1fr 1fr 1fr;
+  display: grid; grid-template-columns: 32px 1fr 1fr 1fr 1fr;
   gap: 4px; margin-bottom: 5px; align-items: center;
 }
-.log-set-num { font-size: 11px; color: var(--text3); text-align: center; }
+.log-set-num { font-size: 11px; color: var(--text3); text-align: center; line-height: 1.2; }
+.set-rep-target { font-size: 9px; color: var(--text3); opacity: 0.7; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .log-input {
   background: var(--bg3); border: 1.5px solid var(--border);
   border-radius: 6px; color: var(--text);

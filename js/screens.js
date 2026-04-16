@@ -245,14 +245,34 @@ const Screens = {
     const day = programme.find(d=>d.id===dayId);
     const ex = day?.exercises.find(e=>e.id===exId);
     if (!ex) return;
+    const setRepsInputs = Array.from({length: ex.sets}, (_, i) => {
+      const val = (ex.setReps && ex.setReps[i]) || ex.reps;
+      return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <span style="font-size:12px;color:var(--text3);min-width:40px">Set ${i+1}</span>
+        <input class="form-input set-rep-input" value="${val}" style="flex:1">
+      </div>`;
+    }).join('');
     App.showModal(`Edit: ${ex.name}`, `
       <div class="form-group"><label class="form-label">Exercise name</label><input class="form-input" id="edit-name" value="${ex.name}"></div>
-      <div class="form-group"><label class="form-label">Target sets</label><input class="form-input" id="edit-sets" type="number" value="${ex.sets}" min="1" max="10"></div>
-      <div class="form-group"><label class="form-label">Rep range</label><input class="form-input" id="edit-reps" value="${ex.reps}"></div>
+      <div class="form-group"><label class="form-label">Target sets</label><input class="form-input" id="edit-sets" type="number" value="${ex.sets}" min="1" max="10" oninput="Screens._updateSetRepsInputs(this.value)"></div>
+      <div class="form-group"><label class="form-label">Rep targets per set</label><div id="set-reps-inputs">${setRepsInputs}</div></div>
       <div class="form-group"><label class="form-label">Rest (seconds)</label><input class="form-input" id="edit-rest" type="number" value="${ex.rest}" min="30" max="600" step="10"></div>
       <button class="btn-primary" onclick="Screens.saveExercise('${dayId}','${exId}')">Save</button>
       <button class="btn-secondary" style="color:var(--red);border-color:#5a1a1a" onclick="Screens.deleteExercise('${dayId}','${exId}')">Delete exercise</button>
       <button class="btn-secondary" onclick="App.closeModal()">Cancel</button>`);
+  },
+
+  _updateSetRepsInputs(numSets) {
+    const container = document.getElementById('set-reps-inputs');
+    if (!container) return;
+    const existing = Array.from(container.querySelectorAll('.set-rep-input')).map(i => i.value);
+    const fallback = existing[0] || '8–12';
+    const n = Math.max(1, Math.min(10, parseInt(numSets) || 1));
+    container.innerHTML = Array.from({length: n}, (_, i) => `
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <span style="font-size:12px;color:var(--text3);min-width:40px">Set ${i+1}</span>
+        <input class="form-input set-rep-input" value="${existing[i] || fallback}" style="flex:1">
+      </div>`).join('');
   },
 
   async saveExercise(dayId, exId) {
@@ -262,8 +282,11 @@ const Screens = {
     if (!ex) return;
     ex.name = document.getElementById('edit-name').value.trim() || ex.name;
     ex.sets = parseInt(document.getElementById('edit-sets').value) || ex.sets;
-    ex.reps = document.getElementById('edit-reps').value.trim() || ex.reps;
     ex.rest = parseInt(document.getElementById('edit-rest').value) || ex.rest;
+    const repInputs = Array.from(document.querySelectorAll('.set-rep-input')).map(i => i.value.trim());
+    ex.reps = repInputs[0] || ex.reps;
+    const allSame = repInputs.every(r => r === repInputs[0]);
+    ex.setReps = allSame ? null : repInputs;
     await DB.saveProgramme(programme);
     App.closeModal(); this.renderProgramme(); App.toast('Exercise updated');
   },

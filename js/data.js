@@ -160,7 +160,7 @@ const DB = {
       week,
       exercises:  day.exercises.map(ex => ({
         id: ex.id, name: ex.name, targetSets: ex.sets,
-        reps: ex.reps, rest: ex.rest, rir: ex.rir,
+        reps: ex.reps, setReps: ex.setReps || null, rest: ex.rest, rir: ex.rir,
         sets: Array.from({ length: ex.sets }, () => ({
           load: '', reps: '', rir: '', done: false,
         }))
@@ -195,7 +195,7 @@ const DB = {
       week,
       exercises:  day.exercises.map(ex => ({
         id: ex.id, name: ex.name, targetSets: ex.sets,
-        reps: ex.reps, rest: ex.rest, rir: ex.rir,
+        reps: ex.reps, setReps: ex.setReps || null, rest: ex.rest, rir: ex.rir,
         sets: Array.from({ length: ex.sets }, () => ({
           load: '', reps: '', rir: '', done: false,
         }))

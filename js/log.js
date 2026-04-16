@@ -140,10 +140,11 @@ const Log = {
     const prevRir  = prevSets[i] ? (prevSets[i].rir || '') : '';
     // Show prev e1RM as placeholder in last column when current row is empty
     const prevE1rm = (prevLoad && prevReps) ? DB.calcE1RM(parseFloat(prevLoad), parseInt(prevReps)) : '';
+    const repTarget = (ex.setReps && ex.setReps[i]) ? ex.setReps[i] : ex.reps;
 
     return `
       <div class="log-set-row ${set.done?'set-done':''}" id="logset-${dayId}-${exId}-${i}">
-        <div class="log-set-num">${i+1}</div>
+        <div class="log-set-num">${i+1}<div class="set-rep-target">${repTarget}</div></div>
         <input class="log-input ${set.done?'done':''} ${(!load && prevLoad)?'has-prev':''}" type="number" inputmode="decimal"
           placeholder="${prevLoad||''}" value="${load}"
           oninput="Log.onInput('${dayId}','${exId}',${i},'load',this.value)"
