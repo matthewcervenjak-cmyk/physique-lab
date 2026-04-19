@@ -84,11 +84,11 @@ const Log = {
     for (const ex of session.exercises) {
       const prevEx = prevSession ? (prevSession.exercises||[]).find(e=>e.id===ex.id) : null;
       const prevSets = prevEx ? (prevEx.sets||[]).filter(s=>s.load&&s.reps) : [];
-      const prevBest = prevSets.length ? Math.max(...prevSets.map(s=>DB.calcE1RM(parseFloat(s.load),parseInt(s.reps)))) : null;
+      const prevBest = prevSets.length ? Math.max(...prevSets.map(s=>DB.calcE1RM(parseFloat(s.load),s.reps))) : null;
       const prevWeekNum = prevSession ? prevSession.week : null;
 
       const curSets = (ex.sets||[]).filter(s=>s.load&&s.reps);
-      const curBest = curSets.length ? Math.max(...curSets.map(s=>DB.calcE1RM(parseFloat(s.load),parseInt(s.reps)))) : null;
+      const curBest = curSets.length ? Math.max(...curSets.map(s=>DB.calcE1RM(parseFloat(s.load),s.reps))) : null;
 
       let trendBadge = '';
       if (curBest && prevBest) {
@@ -133,12 +133,12 @@ const Log = {
     const load = set.load || '';
     const reps = set.reps || '';
     const rir  = set.rir  || '';
-    const e1rm = (load && reps) ? DB.calcE1RM(parseFloat(load), parseInt(reps)) : '';
+    const e1rm = (load && reps) ? DB.calcE1RM(parseFloat(load), reps) : '';
     const prevLoad = prevSets[i] ? prevSets[i].load : '';
     const prevReps = prevSets[i] ? prevSets[i].reps : '';
     const prevRir  = prevSets[i] ? (prevSets[i].rir || '') : '';
     // Show prev e1RM as placeholder in last column when current row is empty
-    const prevE1rm = (prevLoad && prevReps) ? DB.calcE1RM(parseFloat(prevLoad), parseInt(prevReps)) : '';
+    const prevE1rm = (prevLoad && prevReps) ? DB.calcE1RM(parseFloat(prevLoad), prevReps) : '';
     const repTarget = (ex.setReps && ex.setReps[i]) ? ex.setReps[i] : ex.reps;
 
     return `
@@ -148,10 +148,10 @@ const Log = {
           placeholder="${prevLoad||''}" value="${load}"
           oninput="Log.onInput('${dayId}','${exId}',${i},'load',this.value)"
           step="0.5" min="0">
-        <input class="log-input ${set.done?'done':''} ${(!reps && prevReps)?'has-prev':''}" type="number" inputmode="numeric"
+        <input class="log-input ${set.done?'done':''} ${(!reps && prevReps)?'has-prev':''}" type="text" inputmode="text"
           placeholder="${prevReps||''}" value="${reps}"
           oninput="Log.onInput('${dayId}','${exId}',${i},'reps',this.value)"
-          min="1" max="200">
+          autocomplete="off" autocorrect="off" spellcheck="false">
         <input class="log-input ${set.done?'done':''} ${(!rir && prevRir)?'has-prev':''}" type="number" inputmode="decimal"
           placeholder="${prevRir||'—'}" value="${rir}"
           oninput="Log.onInput('${dayId}','${exId}',${i},'rir',this.value)"
@@ -199,7 +199,7 @@ const Log = {
 
     // Update e1RM display live
     const set = ex.sets[setIdx];
-    const e1rm = (set.load && set.reps) ? DB.calcE1RM(parseFloat(set.load), parseInt(set.reps)) : '';
+    const e1rm = (set.load && set.reps) ? DB.calcE1RM(parseFloat(set.load), set.reps) : '';
     const rowEl = document.getElementById(`logset-${dayId}-${exId}-${setIdx}`);
     if (rowEl) {
       const e1rmEl = rowEl.querySelector('.log-e1rm');
@@ -217,11 +217,11 @@ const Log = {
 
   _updateTrendBadge(dayId, exId, ex, week) {
     const curSets = (ex.sets||[]).filter(s=>s.load&&s.reps);
-    const curBest = curSets.length ? Math.max(...curSets.map(s=>DB.calcE1RM(parseFloat(s.load),parseInt(s.reps)))) : null;
+    const curBest = curSets.length ? Math.max(...curSets.map(s=>DB.calcE1RM(parseFloat(s.load),s.reps))) : null;
     const prevSession = this._getPrevSession(week, dayId);
     const prevEx = prevSession ? (prevSession.exercises||[]).find(e=>e.id===exId) : null;
     const prevSets = prevEx ? (prevEx.sets||[]).filter(s=>s.load&&s.reps) : [];
-    const prevBest = prevSets.length ? Math.max(...prevSets.map(s=>DB.calcE1RM(parseFloat(s.load),parseInt(s.reps)))) : null;
+    const prevBest = prevSets.length ? Math.max(...prevSets.map(s=>DB.calcE1RM(parseFloat(s.load),s.reps))) : null;
     const block = document.getElementById(`exblock-${dayId}-${exId}`);
     if (!block || !curBest || !prevBest) return;
     const badge = block.querySelector('.ex-block-header .badge');

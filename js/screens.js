@@ -28,6 +28,8 @@ const Screens = {
       const delta = last - first, deltaPct = Math.round((delta / first) * 100);
       const maxE = Math.max(...hist.map(h=>h.e1rm));
       const barClass = h => { const p = h.e1rm/maxE; return p>=0.97?'peak':p>=0.85?'hi':p>=0.65?'mid':'lo'; };
+      const partialsHist = DB.getPartialsHistory(ex.id);
+      const bestPartials = partialsHist.length ? Math.max(...partialsHist.map(p=>p.partials)) : 0;
 
       html += `
         <div class="card" onclick="Screens.toggleProgDetail('${ex.id}')">
@@ -53,6 +55,21 @@ const Screens = {
                 <div class="stat-tile"><div class="stat-val">${maxE}</div><div class="stat-lbl">Peak e1RM</div></div>
                 <div class="stat-tile"><div class="stat-val">${hist.length}</div><div class="stat-lbl">Sessions</div></div>
               </div>
+              ${partialsHist.length > 0 ? `
+              <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+                <div style="font-size:11px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Lengthen Partials</div>
+                <div class="grid-2">
+                  <div class="stat-tile"><div class="stat-val" style="color:var(--amber)">${bestPartials}</div><div class="stat-lbl">Best partials</div></div>
+                  <div class="stat-tile"><div class="stat-val" style="color:var(--amber)">${partialsHist.length}</div><div class="stat-lbl">Sessions tracked</div></div>
+                </div>
+                <div class="prog-weeks-row" style="margin-top:8px">
+                  ${partialsHist.slice(-6).map((p,i,arr) => {
+                    const prev = arr[i-1];
+                    const arrow = prev ? (p.partials > prev.partials ? '<span class="wk-arrow text-green">↑</span>' : p.partials < prev.partials ? '<span class="wk-arrow" style="color:var(--red)">↓</span>' : '<span class="wk-arrow" style="color:var(--amber)">→</span>') : '';
+                    return `<div class="wk-item"><div class="wk-num">W${p.week}</div><div class="wk-val" style="color:var(--amber)">${p.partials}</div>${arrow}</div>`;
+                  }).join('')}
+                </div>
+              </div>` : ''}
             </div>
           </div>
         </div>`;
@@ -157,7 +174,7 @@ const Screens = {
       for (const s of byWeek[week]) {
         const exercises = s.exercises || [];
         const totalSets = exercises.flatMap(e=>e.sets||[]).filter(s=>s.done||s.load).length;
-        const totalVol = exercises.flatMap(e=>e.sets||[]).filter(s=>s.load&&s.reps).reduce((sum,s)=>sum+parseFloat(s.load)*parseInt(s.reps),0);
+        const totalVol = exercises.flatMap(e=>e.sets||[]).filter(s=>s.load&&s.reps).reduce((sum,s)=>sum+parseFloat(s.load)*DB.parseReps(s.reps).full,0);
         html += `
           <div class="card" onclick="Screens.showSessionDetail('${s.id}')">
             <div class="hist-session">
@@ -188,15 +205,19 @@ const Screens = {
       ${exercises.map(ex => {
         const sets = (ex.sets||[]).filter(s=>s.load&&s.reps);
         if (!sets.length) return '';
-        const maxE = Math.max(...sets.map(s=>DB.calcE1RM(parseFloat(s.load),parseInt(s.reps))));
+        const maxE = Math.max(...sets.map(s=>DB.calcE1RM(parseFloat(s.load),s.reps)));
         return `<div style="margin-bottom:14px">
           <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px">${ex.name}</div>
-          ${sets.map((s,i)=>`
+          ${sets.map((s,i)=>{
+            const { partials } = DB.parseReps(s.reps);
+            const repsLabel = partials > 0 ? `${s.reps} reps <span style="color:var(--amber);font-size:11px">(+${partials} partials)</span>` : `${s.reps} reps`;
+            return `
             <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;border-bottom:1px solid var(--border)">
               <span style="color:var(--text3)">Set ${i+1}</span>
-              <span style="color:var(--text2)">${s.load}kg × ${s.reps} reps</span>
-              <span style="color:var(--text3)">e1RM ${DB.calcE1RM(parseFloat(s.load),parseInt(s.reps))}kg</span>
-            </div>`).join('')}
+              <span style="color:var(--text2)">${s.load}kg × ${repsLabel}</span>
+              <span style="color:var(--text3)">e1RM ${DB.calcE1RM(parseFloat(s.load),s.reps)}kg</span>
+            </div>`;
+          }).join('')}
           <div style="font-size:11px;color:var(--green);margin-top:4px">Peak e1RM: ${maxE}kg</div>
         </div>`;
       }).join('')}
