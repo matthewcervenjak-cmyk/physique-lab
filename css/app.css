@@ -553,6 +553,7 @@ body.theme-lynny .loading-spinner { border-top-color: #fc7ab0; }
   border: 1px solid transparent;
 }
 .log-e1rm.prev-val { color: #4a7a6a; font-size: 12px; }
+.e1rm-each-hint { display: block; font-size: 9px; color: var(--amber); opacity: 0.8; margin-top: 1px; }
 
 .log-add-set {
   background: none; border: 1.5px dashed var(--border);

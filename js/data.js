@@ -336,12 +336,23 @@ const DB = {
     return { full: isNaN(full) ? 0 : full, partials: 0 };
   },
 
-  // Accepts numeric reps or a "10+5" string — uses full reps for e1RM
+  // Resolve load — accepts "50e" / "50E" (each side) → 100, plain "100" → 100
+  resolveLoad(val) {
+    if (val === '' || val === null || val === undefined) return 0;
+    const str = String(val).trim();
+    const match = str.match(/^(\d+(?:\.\d+)?)[eE]$/);
+    if (match) return parseFloat(match[1]) * 2;
+    const num = parseFloat(str);
+    return isNaN(num) ? 0 : num;
+  },
+
+  // Accepts string or number for both load and reps
   calcE1RM(load, reps) {
-    const fullReps = typeof reps === 'string' ? this.parseReps(reps).full : reps;
-    if (!load || !fullReps || fullReps <= 0) return 0;
-    if (fullReps === 1) return load;
-    return Math.round((load * (1 + fullReps / 30)) * 10) / 10;
+    const resolvedLoad = typeof load === 'string' ? this.resolveLoad(load) : (load || 0);
+    const fullReps = typeof reps === 'string' ? this.parseReps(reps).full : (reps || 0);
+    if (!resolvedLoad || !fullReps || fullReps <= 0) return 0;
+    if (fullReps === 1) return resolvedLoad;
+    return Math.round((resolvedLoad * (1 + fullReps / 30)) * 10) / 10;
   },
 
   // For progression comparison — find the most recent saved session for a dayId BEFORE the current week
@@ -361,7 +372,7 @@ const DB = {
         if (!ex) return hist;
         const sets = (ex.sets || []).filter(set => set.load && set.reps);
         if (!sets.length) return hist;
-        const maxE1RM = Math.max(...sets.map(set => this.calcE1RM(parseFloat(set.load), set.reps)));
+        const maxE1RM = Math.max(...sets.map(set => this.calcE1RM(set.load, set.reps)));
         if (maxE1RM > 0) hist.push({ date: s.date, week: s.week, e1rm: maxE1RM });
         return hist;
       }, []);
@@ -390,10 +401,10 @@ const DB = {
     if (!lastEx) return 'new';
     const lastSets = (lastEx.sets || []).filter(s => s.load && s.reps);
     if (!lastSets.length) return 'new';
-    const lastMaxE = Math.max(...lastSets.map(s => this.calcE1RM(parseFloat(s.load), s.reps)));
+    const lastMaxE = Math.max(...lastSets.map(s => this.calcE1RM(s.load, s.reps)));
     const curSets = (currentSets || []).filter(s => s.load && s.reps);
     if (!curSets.length) return null;
-    const curMaxE = Math.max(...curSets.map(s => this.calcE1RM(parseFloat(s.load), s.reps)));
+    const curMaxE = Math.max(...curSets.map(s => this.calcE1RM(s.load, s.reps)));
     if (curMaxE > lastMaxE * 1.005) return 'pr';
     if (curMaxE < lastMaxE * 0.99)  return 'down';
     return 'same';

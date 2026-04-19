@@ -84,11 +84,11 @@ const Log = {
     for (const ex of session.exercises) {
       const prevEx = prevSession ? (prevSession.exercises||[]).find(e=>e.id===ex.id) : null;
       const prevSets = prevEx ? (prevEx.sets||[]).filter(s=>s.load&&s.reps) : [];
-      const prevBest = prevSets.length ? Math.max(...prevSets.map(s=>DB.calcE1RM(parseFloat(s.load),s.reps))) : null;
+      const prevBest = prevSets.length ? Math.max(...prevSets.map(s=>DB.calcE1RM(s.load,s.reps))) : null;
       const prevWeekNum = prevSession ? prevSession.week : null;
 
       const curSets = (ex.sets||[]).filter(s=>s.load&&s.reps);
-      const curBest = curSets.length ? Math.max(...curSets.map(s=>DB.calcE1RM(parseFloat(s.load),s.reps))) : null;
+      const curBest = curSets.length ? Math.max(...curSets.map(s=>DB.calcE1RM(s.load,s.reps))) : null;
 
       let trendBadge = '';
       if (curBest && prevBest) {
@@ -133,21 +133,26 @@ const Log = {
     const load = set.load || '';
     const reps = set.reps || '';
     const rir  = set.rir  || '';
-    const e1rm = (load && reps) ? DB.calcE1RM(parseFloat(load), reps) : '';
+    const e1rm = (load && reps) ? DB.calcE1RM(load, reps) : '';
     const prevLoad = prevSets[i] ? prevSets[i].load : '';
     const prevReps = prevSets[i] ? prevSets[i].reps : '';
     const prevRir  = prevSets[i] ? (prevSets[i].rir || '') : '';
     // Show prev e1RM as placeholder in last column when current row is empty
-    const prevE1rm = (prevLoad && prevReps) ? DB.calcE1RM(parseFloat(prevLoad), prevReps) : '';
+    const prevE1rm = (prevLoad && prevReps) ? DB.calcE1RM(prevLoad, prevReps) : '';
     const repTarget = (ex.setReps && ex.setReps[i]) ? ex.setReps[i] : ex.reps;
+    const isEachSide = load && /[eE]$/.test(String(load).trim());
+    const resolvedLoadKg = isEachSide ? DB.resolveLoad(load) : null;
+    const e1rmInner = e1rm
+      ? (isEachSide ? `${e1rm}<span class="e1rm-each-hint">${resolvedLoadKg}kg</span>` : `${e1rm}`)
+      : (prevE1rm ? prevE1rm : '—');
 
     return `
       <div class="log-set-row ${set.done?'set-done':''}" id="logset-${dayId}-${exId}-${i}">
         <div class="log-set-num">${i+1}<div class="set-rep-target">${repTarget}</div></div>
-        <input class="log-input ${set.done?'done':''} ${(!load && prevLoad)?'has-prev':''}" type="number" inputmode="decimal"
+        <input class="log-input ${set.done?'done':''} ${(!load && prevLoad)?'has-prev':''}" type="text" inputmode="decimal"
           placeholder="${prevLoad||''}" value="${load}"
           oninput="Log.onInput('${dayId}','${exId}',${i},'load',this.value)"
-          step="0.5" min="0">
+          autocomplete="off" autocorrect="off" spellcheck="false">
         <input class="log-input ${set.done?'done':''} ${(!reps && prevReps)?'has-prev':''}" type="text" inputmode="text"
           placeholder="${prevReps||''}" value="${reps}"
           oninput="Log.onInput('${dayId}','${exId}',${i},'reps',this.value)"
@@ -156,7 +161,7 @@ const Log = {
           placeholder="${prevRir||'—'}" value="${rir}"
           oninput="Log.onInput('${dayId}','${exId}',${i},'rir',this.value)"
           step="0.5" min="0" max="10">
-        <div class="log-e1rm ${!e1rm && prevE1rm ? 'prev-val' : ''}">${e1rm || (prevE1rm ? prevE1rm : '—')}</div>
+        <div class="log-e1rm ${!e1rm && prevE1rm ? 'prev-val' : ''}">${e1rmInner}</div>
       </div>`;
   },
 
@@ -199,11 +204,17 @@ const Log = {
 
     // Update e1RM display live
     const set = ex.sets[setIdx];
-    const e1rm = (set.load && set.reps) ? DB.calcE1RM(parseFloat(set.load), set.reps) : '';
+    const e1rm = (set.load && set.reps) ? DB.calcE1RM(set.load, set.reps) : '';
     const rowEl = document.getElementById(`logset-${dayId}-${exId}-${setIdx}`);
     if (rowEl) {
       const e1rmEl = rowEl.querySelector('.log-e1rm');
-      if (e1rmEl) e1rmEl.textContent = e1rm || '—';
+      if (e1rmEl) {
+        const isEachSide = set.load && /[eE]$/.test(String(set.load).trim());
+        const resolvedKg = isEachSide ? DB.resolveLoad(set.load) : null;
+        e1rmEl.innerHTML = e1rm
+          ? (isEachSide ? `${e1rm}<span class="e1rm-each-hint">${resolvedKg}kg</span>` : `${e1rm}`)
+          : '—';
+      }
     }
 
     // Update trend badge
@@ -217,11 +228,11 @@ const Log = {
 
   _updateTrendBadge(dayId, exId, ex, week) {
     const curSets = (ex.sets||[]).filter(s=>s.load&&s.reps);
-    const curBest = curSets.length ? Math.max(...curSets.map(s=>DB.calcE1RM(parseFloat(s.load),s.reps))) : null;
+    const curBest = curSets.length ? Math.max(...curSets.map(s=>DB.calcE1RM(s.load,s.reps))) : null;
     const prevSession = this._getPrevSession(week, dayId);
     const prevEx = prevSession ? (prevSession.exercises||[]).find(e=>e.id===exId) : null;
     const prevSets = prevEx ? (prevEx.sets||[]).filter(s=>s.load&&s.reps) : [];
-    const prevBest = prevSets.length ? Math.max(...prevSets.map(s=>DB.calcE1RM(parseFloat(s.load),s.reps))) : null;
+    const prevBest = prevSets.length ? Math.max(...prevSets.map(s=>DB.calcE1RM(s.load,s.reps))) : null;
     const block = document.getElementById(`exblock-${dayId}-${exId}`);
     if (!block || !curBest || !prevBest) return;
     const badge = block.querySelector('.ex-block-header .badge');

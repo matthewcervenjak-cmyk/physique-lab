@@ -174,7 +174,7 @@ const Screens = {
       for (const s of byWeek[week]) {
         const exercises = s.exercises || [];
         const totalSets = exercises.flatMap(e=>e.sets||[]).filter(s=>s.done||s.load).length;
-        const totalVol = exercises.flatMap(e=>e.sets||[]).filter(s=>s.load&&s.reps).reduce((sum,s)=>sum+parseFloat(s.load)*DB.parseReps(s.reps).full,0);
+        const totalVol = exercises.flatMap(e=>e.sets||[]).filter(s=>s.load&&s.reps).reduce((sum,s)=>sum+DB.resolveLoad(s.load)*DB.parseReps(s.reps).full,0);
         html += `
           <div class="card" onclick="Screens.showSessionDetail('${s.id}')">
             <div class="hist-session">
@@ -205,17 +205,23 @@ const Screens = {
       ${exercises.map(ex => {
         const sets = (ex.sets||[]).filter(s=>s.load&&s.reps);
         if (!sets.length) return '';
-        const maxE = Math.max(...sets.map(s=>DB.calcE1RM(parseFloat(s.load),s.reps)));
+        const maxE = Math.max(...sets.map(s=>DB.calcE1RM(s.load,s.reps)));
         return `<div style="margin-bottom:14px">
           <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px">${ex.name}</div>
           ${sets.map((s,i)=>{
             const { partials } = DB.parseReps(s.reps);
-            const repsLabel = partials > 0 ? `${s.reps} reps <span style="color:var(--amber);font-size:11px">(+${partials} partials)</span>` : `${s.reps} reps`;
+            const isEachSide = /[eE]$/.test(String(s.load).trim());
+            const loadLabel = isEachSide
+              ? `${s.load}kg <span style="color:var(--amber);font-size:11px">(${DB.resolveLoad(s.load)}kg total)</span>`
+              : `${s.load}kg`;
+            const repsLabel = partials > 0
+              ? `${s.reps} reps <span style="color:var(--amber);font-size:11px">(+${partials} partials)</span>`
+              : `${s.reps} reps`;
             return `
             <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;border-bottom:1px solid var(--border)">
               <span style="color:var(--text3)">Set ${i+1}</span>
-              <span style="color:var(--text2)">${s.load}kg × ${repsLabel}</span>
-              <span style="color:var(--text3)">e1RM ${DB.calcE1RM(parseFloat(s.load),s.reps)}kg</span>
+              <span style="color:var(--text2)">${loadLabel} × ${repsLabel}</span>
+              <span style="color:var(--text3)">e1RM ${DB.calcE1RM(s.load,s.reps)}kg</span>
             </div>`;
           }).join('')}
           <div style="font-size:11px;color:var(--green);margin-top:4px">Peak e1RM: ${maxE}kg</div>
