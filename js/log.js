@@ -291,8 +291,18 @@ const Log = {
     Screens.renderDeload();
   },
 
-  async clearSession(dayId) {
-    if (!confirm('Clear all logged data for this session?')) return;
+  clearSession(dayId) {
+    const key = `w${this._currentWeek}_${dayId}`;
+    const session = this._sessions[key];
+    if (!session) return;
+    App.showModal('Clear session?', `
+      <div class="rec-text" style="margin-bottom:16px;line-height:1.6">This will delete all logged sets for <strong>${session.dayLabel}</strong> — Week ${this._currentWeek}. This cannot be undone.</div>
+      <button class="btn-primary" style="background:#5a1a1a;color:var(--red);border:1px solid #7a2a2a" onclick="Log._confirmClearSession('${dayId}')">Yes, clear session</button>
+      <button class="btn-secondary" onclick="App.closeModal()">Cancel</button>`);
+  },
+
+  async _confirmClearSession(dayId) {
+    App.closeModal();
     const key = `w${this._currentWeek}_${dayId}`;
     const session = this._sessions[key];
     if (!session) return;
